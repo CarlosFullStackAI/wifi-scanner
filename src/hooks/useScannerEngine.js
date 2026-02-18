@@ -1,21 +1,25 @@
 import { useState, useEffect, useRef } from 'react';
 
 // Target classification table
+// detectionH = height range where the WiFi sensor registers movement (center of mass zone)
+// distMin/distMax = realistic indoor distance from router in meters
 const TARGETS = [
-    { type: 'animal',     label: 'Animal Pequeño', sub: 'Perro / Gato',          hMin: 0.30, hMax: 0.60, iMin: 15, iMax: 38 },
-    { type: 'adolescent', label: 'Adolescente',     sub: 'Joven 12–17 años',      hMin: 1.30, hMax: 1.62, iMin: 39, iMax: 62 },
-    { type: 'adult',      label: 'Adulto',          sub: 'Persona mayor de edad', hMin: 1.63, hMax: 1.92, iMin: 63, iMax: 97 },
+    { type: 'animal',     label: 'Animal Pequeño', sub: 'Perro / Gato',          hMin: 0.30, hMax: 0.60, dHMin: 0.10, dHMax: 0.40, iMin: 15, iMax: 38 },
+    { type: 'adolescent', label: 'Adolescente',     sub: 'Joven 12–17 años',      hMin: 1.30, hMax: 1.62, dHMin: 0.65, dHMax: 1.20, iMin: 39, iMax: 62 },
+    { type: 'adult',      label: 'Adulto',          sub: 'Persona mayor de edad', hMin: 1.63, hMax: 1.92, dHMin: 0.90, dHMax: 1.55, iMin: 63, iMax: 97 },
 ];
 
 const classify = (impact) => {
     for (const t of TARGETS) {
         if (impact >= t.iMin && impact <= t.iMax) {
-            const height = (t.hMin + Math.random() * (t.hMax - t.hMin)).toFixed(2);
-            const confidence = 62 + Math.floor(Math.random() * 33);
-            // Random position on the canvas (0-1 range)
+            const height         = (t.hMin + Math.random() * (t.hMax - t.hMin)).toFixed(2);
+            const detectionH     = (t.dHMin + Math.random() * (t.dHMax - t.dHMin)).toFixed(2);
+            // Distance: closer targets = stronger signal disturbance; range 1–14m
+            const distanceM      = (1.2 + Math.random() * 12.8).toFixed(1);
+            const confidence     = 62 + Math.floor(Math.random() * 33);
             const x = 0.15 + Math.random() * 0.70;
             const y = 0.15 + Math.random() * 0.60;
-            return { ...t, height, confidence, x, y, timestamp: Date.now() };
+            return { ...t, height, detectionH, distanceM, confidence, x, y, timestamp: Date.now() };
         }
     }
     return null;
@@ -57,7 +61,7 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
 
                         const logType = det.type === 'adult' ? 'danger' : det.type === 'adolescent' ? 'warning' : 'info';
                         addLogCallback?.(
-                            `${det.label} detectado — ${det.height}m · conf. ${det.confidence}%`,
+                            `${det.label} — ${det.height}m · det. a ${det.detectionH}m · ${det.distanceM}m del router`,
                             logType
                         );
                     }
@@ -90,7 +94,7 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
         if (det) {
             setLastDetection(det);
             detectionRef.current = { ...det, alpha: 1.0 };
-            addLogCallback?.(`⚠ ${det.label} — ${det.height}m · ALERTA MANUAL`, 'danger');
+            addLogCallback?.(`⚠ ${det.label} — ${det.height}m · det. ${det.detectionH}m · ${det.distanceM}m router`, 'danger');
         }
         statusRef.current.disturbance = Math.min(100, impact);
         setDisturbanceDisplay(Math.floor(impact));

@@ -85,10 +85,15 @@ const DetectionPanel = ({ lastDetection, isScanning, isDark }) => {
                         </div>
                     </div>
 
-                    {/* Stats row */}
-                    <div className="grid grid-cols-3 gap-2 mt-2.5">
-                        <Stat label="Altura" value={`${lastDetection.height}m`} isDark={isDark} />
+                    {/* Stats — row 1 */}
+                    <div className="grid grid-cols-3 gap-1.5 mt-2.5">
+                        <Stat label="Altura obj." value={`${lastDetection.height}m`} isDark={isDark} />
+                        <Stat label="Detect. en" value={`${lastDetection.detectionH}m`} isDark={isDark} highlight />
                         <Stat label="Conf." value={`${lastDetection.confidence}%`} isDark={isDark} />
+                    </div>
+                    {/* Stats — row 2 */}
+                    <div className="grid grid-cols-2 gap-1.5 mt-1.5">
+                        <Stat label="Dist. router" value={`${lastDetection.distanceM}m`} isDark={isDark} highlight />
                         <Stat label="Hace" value={fmtAgo(lastDetection.timestamp)} isDark={isDark} />
                     </div>
                 </div>
@@ -97,9 +102,9 @@ const DetectionPanel = ({ lastDetection, isScanning, isDark }) => {
     );
 };
 
-const Stat = ({ label, value, isDark }) => (
-    <div className={`rounded-lg p-1.5 text-center ${isDark ? 'bg-black/20' : 'bg-white/60'}`}>
-        <div className={`text-[7px] uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>{label}</div>
+const Stat = ({ label, value, isDark, highlight }) => (
+    <div className={`rounded-lg p-1.5 text-center ${highlight ? (isDark ? 'bg-white/[0.06]' : 'bg-white/80') : (isDark ? 'bg-black/20' : 'bg-white/60')}`}>
+        <div className={`text-[7px] uppercase tracking-widest ${highlight ? (isDark ? 'text-cyan-600' : 'text-cyan-500') : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>{label}</div>
         <div className={`text-[10px] font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</div>
     </div>
 );
