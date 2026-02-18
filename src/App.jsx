@@ -15,6 +15,7 @@ import ConfigModal from './components/modules/config/ConfigModal';
 import AiReportModal from './components/modules/config/AiReportModal';
 import WifiPanel from './components/modules/wifi/WifiPanel';
 import SystemConfigPanel from './components/modules/config/SystemConfigPanel';
+import DetectionPanel from './components/modules/detection/DetectionPanel';
 
 const App = () => {
   const { themeMode, setThemeMode, isDark } = useTheme();
@@ -29,7 +30,7 @@ const App = () => {
     setLogs(prev => [...prev.slice(-40), { time, message, type }]);
   };
 
-  const { disturbanceDisplay, history: engineHistory, triggerInterference, currentDisturbanceCtx } = useScannerEngine(isScanning, sensitivity, addLog);
+  const { disturbanceDisplay, history: engineHistory, triggerInterference, currentDisturbanceCtx, lastDetection, detectionRef } = useScannerEngine(isScanning, sensitivity, addLog);
 
   useEffect(() => { setHistory(engineHistory); }, [engineHistory]);
   useEffect(() => { addLog("NET-WATCHER OS v6.1 STABLE", "system"); }, []);
@@ -159,7 +160,7 @@ const App = () => {
             ? `border bg-[#0a0f1a] shadow-2xl shadow-black/60 ${isScanning ? 'border-cyan-500/20 shadow-cyan-500/5' : 'border-slate-800/60'}`
             : 'border border-slate-200 bg-white shadow-xl shadow-slate-200/50'
           }`}>
-            <ScannerCanvas isScanning={isScanning} disturbanceCtx={currentDisturbanceCtx} isDark={isDark} />
+            <ScannerCanvas isScanning={isScanning} disturbanceCtx={currentDisturbanceCtx} detectionRef={detectionRef} isDark={isDark} />
 
             {hardwareList.map(dev => {
               const active = dev.status === 'recording' || dev.status === 'online';
@@ -267,11 +268,12 @@ const App = () => {
           </button>
         </div>
 
-        {/* RIGHT - Commands + Settings + Config */}
-        <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
+        {/* RIGHT - Detection + Commands + Settings + System */}
+        <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0">
+          <DetectionPanel lastDetection={lastDetection} isScanning={isScanning} isDark={isDark} />
           <CommandsPanel isScanning={isScanning} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
           <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
-          <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} hardwareList={hardwareList} setShowConfig={setShowConfig} />
+          <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} setShowConfig={setShowConfig} />
         </div>
       </main>
 

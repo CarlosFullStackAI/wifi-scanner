@@ -16,7 +16,17 @@
       "Bash(git push:*)",
       "Bash(start https://wifi-scanner.pages.dev)",
       "WebFetch(domain:wifi-scanner.pages.dev)",
-      "Bash(npm ls:*)"
+      "Bash(npm ls:*)",
+      "Bash(netsh wlan show networks:*)",
+      "Bash(cmd.exe /c \"netsh wlan show networks mode=bssid\")",
+      "Bash(cmd.exe /c \"chcp 65001 >nul && netsh wlan show networks mode=bssid\")",
+      "Bash(node -e \"const {exec} = require\\(''child_process''\\); exec\\(''cmd /c \"\"netsh wlan show networks mode=bssid\"\"'', {encoding:''buffer''}, \\(e,o\\) => { const s = o.toString\\(''latin1''\\); console.log\\(s\\); }\\);\")",
+      "Bash(node -e \"\nconst {exec} = require\\(''child_process''\\);\nexec\\(''netsh wlan show networks mode=bssid'', {encoding:''buffer'', shell:''cmd.exe''}, \\(err, out, stderr\\) => {\n  console.log\\(''ERR:'', err?.message\\);\n  console.log\\(''OUT:'', out.toString\\(''latin1''\\).substring\\(0, 500\\)\\);\n  console.log\\(''STDERR:'', stderr.toString\\(''latin1''\\).substring\\(0, 200\\)\\);\n}\\);\n\")",
+      "Bash(node -e \"\nconst {exec} = require\\(''child_process''\\);\nexec\\(''netsh wlan show interfaces'', {encoding:''buffer'', shell:''cmd.exe''}, \\(err, out\\) => {\n  console.log\\(out.toString\\(''latin1''\\)\\);\n}\\);\n\")",
+      "Bash(node -e \"\nconst { exec } = require\\(''child_process''\\);\nexec\\(''netsh wlan show interfaces'', { encoding: ''buffer'', shell: ''cmd.exe'' }, \\(err, out\\) => {\n  const text = out.toString\\(''latin1''\\);\n  console.log\\(text\\);\n}\\);\n\")",
+      "Bash(node -e \"\nimport\\(''child_process''\\).then\\(\\({exec}\\) => {\n  exec\\(''netsh wlan show interfaces'', {encoding:''buffer'', shell:''cmd.exe''}, \\(err, out\\) => {\n    console.log\\(out.toString\\(''latin1''\\)\\);\n  }\\);\n}\\);\n\")",
+      "Bash(curl:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

@@ -1,56 +1,68 @@
 import { useState, useEffect, useRef } from 'react';
 
-const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) => {
-    const statusRef = useRef({ disturbance: 0 });
-    const [disturbanceDisplay, setDisturbanceDisplay] = useState(0);
-    const [history, setHistory] = useState(new Array(60).fill(0));
-    const sensitivityRef = useRef(initialSensitivity);
-    const nextEventRef = useRef(0);
+// Target classification table
+const TARGETS = [
+    { type: 'animal',     label: 'Animal Pequeño', sub: 'Perro / Gato',          hMin: 0.30, hMax: 0.60, iMin: 15, iMax: 38 },
+    { type: 'adolescent', label: 'Adolescente',     sub: 'Joven 12–17 años',      hMin: 1.30, hMax: 1.62, iMin: 39, iMax: 62 },
+    { type: 'adult',      label: 'Adulto',          sub: 'Persona mayor de edad', hMin: 1.63, hMax: 1.92, iMin: 63, iMax: 97 },
+];
 
-    useEffect(() => {
-        sensitivityRef.current = initialSensitivity;
-    }, [initialSensitivity]);
+const classify = (impact) => {
+    for (const t of TARGETS) {
+        if (impact >= t.iMin && impact <= t.iMax) {
+            const height = (t.hMin + Math.random() * (t.hMax - t.hMin)).toFixed(2);
+            const confidence = 62 + Math.floor(Math.random() * 33);
+            // Random position on the canvas (0-1 range)
+            const x = 0.15 + Math.random() * 0.70;
+            const y = 0.15 + Math.random() * 0.60;
+            return { ...t, height, confidence, x, y, timestamp: Date.now() };
+        }
+    }
+    return null;
+};
+
+const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) => {
+    const statusRef    = useRef({ disturbance: 0 });
+    const detectionRef = useRef(null); // shared with canvas
+    const [disturbanceDisplay, setDisturbanceDisplay] = useState(0);
+    const [history, setHistory]           = useState(new Array(60).fill(0));
+    const [lastDetection, setLastDetection] = useState(null);
+    const sensitivityRef  = useRef(initialSensitivity);
+    const nextEventRef    = useRef(0);
+
+    useEffect(() => { sensitivityRef.current = initialSensitivity; }, [initialSensitivity]);
 
     useEffect(() => {
         let interval;
         if (isScanning) {
-            // First event fires in 2-5 seconds
             nextEventRef.current = 40 + Math.floor(Math.random() * 60);
 
             interval = setInterval(() => {
                 const sens = sensitivityRef.current;
-                // Slower recovery so spikes stay visible longer
-                const recovery = Math.max(0.1, 1.2 - (sens * 0.01));
-
+                const recovery = Math.max(0.1, 1.2 - sens * 0.01);
                 let currentDist = statusRef.current.disturbance;
                 currentDist = Math.max(0, currentDist - recovery);
 
-                // ── Random interference events ──────────────────────────
                 nextEventRef.current -= 1;
                 if (nextEventRef.current <= 0) {
-                    const roll = Math.random();
-                    let impact, label;
+                    // Pick random impact within full range then classify
+                    const rawImpact = 15 + Math.random() * 82;
+                    const scaled    = rawImpact * (0.6 + sens / 160);
+                    const clampedImpact = Math.min(97, rawImpact);
 
-                    if (roll < 0.35) {
-                        // Fluctuación leve  (every ~3-6s)
-                        impact = 25 + Math.random() * 20;
-                        label = `Fluctuación de señal [${Math.floor(impact)}%]`;
-                    } else if (roll < 0.70) {
-                        // Interferencia moderada
-                        impact = 50 + Math.random() * 20;
-                        label = `Interferencia detectada [${Math.floor(impact)}%]`;
-                    } else {
-                        // Alerta alta
-                        impact = 75 + Math.random() * 22;
-                        label = `⚠ INTRUSIÓN DETECTADA [${Math.floor(impact)}%]`;
+                    const det = classify(clampedImpact);
+                    if (det) {
+                        setLastDetection(det);
+                        detectionRef.current = { ...det, alpha: 1.0 };
+
+                        const logType = det.type === 'adult' ? 'danger' : det.type === 'adolescent' ? 'warning' : 'info';
+                        addLogCallback?.(
+                            `${det.label} detectado — ${det.height}m · conf. ${det.confidence}%`,
+                            logType
+                        );
                     }
 
-                    // Scale by sensitivity
-                    const scaled = impact * (0.6 + sens / 160);
                     currentDist = Math.min(100, currentDist + scaled);
-                    addLogCallback?.(label, impact > 70 ? 'danger' : impact > 45 ? 'warning' : 'info');
-
-                    // Next event: 3-10 seconds (60-200 ticks at 50ms)
                     nextEventRef.current = 60 + Math.floor(Math.random() * 140);
                 }
 
@@ -58,12 +70,14 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
                 setDisturbanceDisplay(Math.floor(currentDist));
 
                 const noise = Math.random() * 5;
-                const signalVal = Math.max(0, Math.min(100, 92 + noise - (currentDist * 0.85)));
+                const signalVal = Math.max(0, Math.min(100, 92 + noise - currentDist * 0.85));
                 setHistory(prev => [...prev.slice(1), Math.floor(signalVal)]);
             }, 50);
         } else {
             statusRef.current.disturbance = 0;
+            detectionRef.current = null;
             setDisturbanceDisplay(0);
+            setLastDetection(null);
         }
         return () => clearInterval(interval);
     }, [isScanning]);
@@ -71,18 +85,18 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
     const triggerInterference = () => {
         if (!isScanning) return;
         const sens = sensitivityRef.current;
-        const impact = 80 + (sens * 0.2);
+        const impact = 75 + sens * 0.2;
+        const det = classify(impact);
+        if (det) {
+            setLastDetection(det);
+            detectionRef.current = { ...det, alpha: 1.0 };
+            addLogCallback?.(`⚠ ${det.label} — ${det.height}m · ALERTA MANUAL`, 'danger');
+        }
         statusRef.current.disturbance = Math.min(100, impact);
         setDisturbanceDisplay(Math.floor(impact));
-        addLogCallback?.(`⚠ PERTURBACIÓN MANUAL [${Math.floor(impact)}%]`, 'danger');
     };
 
-    return {
-        disturbanceDisplay,
-        history,
-        triggerInterference,
-        currentDisturbanceCtx: statusRef,
-    };
+    return { disturbanceDisplay, history, triggerInterference, currentDisturbanceCtx: statusRef, lastDetection, detectionRef };
 };
 
 export default useScannerEngine;
