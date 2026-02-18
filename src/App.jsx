@@ -148,7 +148,7 @@ const App = () => {
       <main className="relative z-10 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 flex-1 min-h-0">
         {/* LEFT - WiFi + Sensor + Logs */}
         <div className="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
-          <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} />
+          <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} isSearchingWifi={isSearchingWifi} availableNetworks={availableNetworks} onConnect={connectToNetwork} addLog={addLog} />
           <SensorPanel disturbanceDisplay={disturbanceDisplay} isDark={isDark} isScanning={isScanning} />
           <LogPanel logs={logs} isDark={isDark} />
         </div>
