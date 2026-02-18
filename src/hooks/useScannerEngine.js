@@ -5,7 +5,7 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
     const [disturbanceDisplay, setDisturbanceDisplay] = useState(0);
     const [history, setHistory] = useState(new Array(60).fill(0));
     const sensitivityRef = useRef(initialSensitivity);
-    const nextEventRef = useRef(0); // ticks until next random event
+    const nextEventRef = useRef(0);
 
     useEffect(() => {
         sensitivityRef.current = initialSensitivity;
@@ -14,12 +14,13 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
     useEffect(() => {
         let interval;
         if (isScanning) {
-            // Schedule first random event in 3-8 seconds (at 50ms tick = 60-160 ticks)
-            nextEventRef.current = 60 + Math.floor(Math.random() * 100);
+            // First event fires in 2-5 seconds
+            nextEventRef.current = 40 + Math.floor(Math.random() * 60);
 
             interval = setInterval(() => {
                 const sens = sensitivityRef.current;
-                const recovery = Math.max(0.2, 3 - (sens * 0.02));
+                // Slower recovery so spikes stay visible longer
+                const recovery = Math.max(0.1, 1.2 - (sens * 0.01));
 
                 let currentDist = statusRef.current.disturbance;
                 currentDist = Math.max(0, currentDist - recovery);
@@ -27,33 +28,37 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
                 // ── Random interference events ──────────────────────────
                 nextEventRef.current -= 1;
                 if (nextEventRef.current <= 0) {
-                    // Magnitude: small flicker (10-30) to real alert (60-90)
                     const roll = Math.random();
-                    let impact;
-                    let label;
-                    if (roll < 0.55) {
-                        impact = 10 + Math.random() * 20; // flicker
+                    let impact, label;
+
+                    if (roll < 0.35) {
+                        // Fluctuación leve  (every ~3-6s)
+                        impact = 25 + Math.random() * 20;
                         label = `Fluctuación de señal [${Math.floor(impact)}%]`;
-                    } else if (roll < 0.85) {
-                        impact = 35 + Math.random() * 25; // moderate
+                    } else if (roll < 0.70) {
+                        // Interferencia moderada
+                        impact = 50 + Math.random() * 20;
                         label = `Interferencia detectada [${Math.floor(impact)}%]`;
                     } else {
-                        impact = 65 + Math.random() * 30; // alert
+                        // Alerta alta
+                        impact = 75 + Math.random() * 22;
                         label = `⚠ INTRUSIÓN DETECTADA [${Math.floor(impact)}%]`;
                     }
 
-                    currentDist = Math.min(100, currentDist + impact * (sens / 70));
-                    addLogCallback?.(label, impact > 60 ? 'danger' : impact > 30 ? 'warning' : 'info');
+                    // Scale by sensitivity
+                    const scaled = impact * (0.6 + sens / 160);
+                    currentDist = Math.min(100, currentDist + scaled);
+                    addLogCallback?.(label, impact > 70 ? 'danger' : impact > 45 ? 'warning' : 'info');
 
-                    // Next event in 4-14 seconds (80-280 ticks)
-                    nextEventRef.current = 80 + Math.floor(Math.random() * 200);
+                    // Next event: 3-10 seconds (60-200 ticks at 50ms)
+                    nextEventRef.current = 60 + Math.floor(Math.random() * 140);
                 }
 
                 statusRef.current.disturbance = currentDist;
                 setDisturbanceDisplay(Math.floor(currentDist));
 
                 const noise = Math.random() * 5;
-                const signalVal = Math.max(0, Math.min(100, 90 + noise - (currentDist * 0.8)));
+                const signalVal = Math.max(0, Math.min(100, 92 + noise - (currentDist * 0.85)));
                 setHistory(prev => [...prev.slice(1), Math.floor(signalVal)]);
             }, 50);
         } else {
@@ -66,11 +71,10 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
     const triggerInterference = () => {
         if (!isScanning) return;
         const sens = sensitivityRef.current;
-        const impact = 60 + (sens * 0.4);
-        const newDisturbance = Math.min(100, impact);
-        statusRef.current.disturbance = newDisturbance;
-        setDisturbanceDisplay(Math.floor(newDisturbance));
-        addLogCallback?.(`PERTURBACIÓN MANUAL [${Math.floor(impact)}%]`, 'danger');
+        const impact = 80 + (sens * 0.2);
+        statusRef.current.disturbance = Math.min(100, impact);
+        setDisturbanceDisplay(Math.floor(impact));
+        addLogCallback?.(`⚠ PERTURBACIÓN MANUAL [${Math.floor(impact)}%]`, 'danger');
     };
 
     return {

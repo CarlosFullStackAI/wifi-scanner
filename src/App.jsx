@@ -267,11 +267,11 @@ const App = () => {
           </button>
         </div>
 
-        {/* RIGHT - Config + Settings + Commands */}
+        {/* RIGHT - Commands + Settings + Config */}
         <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
-          <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} hardwareList={hardwareList} setShowConfig={setShowConfig} />
-          <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
           <CommandsPanel isScanning={isScanning} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
+          <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
+          <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} hardwareList={hardwareList} setShowConfig={setShowConfig} />
         </div>
       </main>
 
