@@ -3,181 +3,217 @@ import { getDynamicColor } from '../../../utils/helpers';
 
 const ScannerCanvas = ({ isScanning, disturbanceCtx, isDark }) => {
     const canvasRef = useRef(null);
-    const requestRef = useRef();
-    const particlesRef = useRef([]);
-    const scanLinePos = useRef(0);
+    const reqRef = useRef();
+    const particles = useRef([]);
+    const scanPos = useRef(0);
+    const time = useRef(0);
 
+    // Init particles
     useEffect(() => {
-        const p = [];
-        for (let i = 0; i < 100; i++) {
-            p.push({
-                x: Math.random(),
-                y: Math.random(),
-                vx: (Math.random() - 0.5) * 0.0003,
-                vy: (Math.random() - 0.5) * 0.0003,
-                size: Math.random() > 0.85 ? 3 : Math.random() > 0.5 ? 2 : 1,
+        const arr = [];
+        for (let i = 0; i < 120; i++) {
+            arr.push({
+                x: Math.random(), y: Math.random(),
+                vx: (Math.random() - 0.5) * 0.0002,
+                vy: (Math.random() - 0.5) * 0.0002,
+                s: Math.random() > 0.9 ? 2.5 : Math.random() > 0.5 ? 1.5 : 1,
             });
         }
-        particlesRef.current = p;
+        particles.current = arr;
     }, []);
 
-    // Responsive canvas
+    // Responsive
     useEffect(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+        const c = canvasRef.current;
+        if (!c) return;
         const resize = () => {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            canvas.width = rect.width * window.devicePixelRatio;
-            canvas.height = rect.height * window.devicePixelRatio;
-            canvas.style.width = rect.width + 'px';
-            canvas.style.height = rect.height + 'px';
+            const r = c.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            c.width = r.width * dpr;
+            c.height = r.height * dpr;
+            c.style.width = r.width + 'px';
+            c.style.height = r.height + 'px';
         };
         resize();
-        const observer = new ResizeObserver(resize);
-        observer.observe(canvas.parentElement);
-        return () => observer.disconnect();
+        const obs = new ResizeObserver(resize);
+        obs.observe(c.parentElement);
+        return () => obs.disconnect();
     }, []);
 
     const animate = useCallback(() => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        const w = canvas.width;
-        const h = canvas.height;
+        const c = canvasRef.current;
+        if (!c) return;
+        const ctx = c.getContext('2d');
+        const w = c.width, h = c.height;
         const dpr = window.devicePixelRatio || 1;
+        time.current += 0.02;
 
-        const distLevel = disturbanceCtx.current ? disturbanceCtx.current.disturbance : 0;
-        const mainColor = getDynamicColor(distLevel, isDark);
+        const dist = disturbanceCtx.current ? disturbanceCtx.current.disturbance : 0;
+        const color = getDynamicColor(dist, isDark);
+        const bg = isDark ? '#070b14' : '#f8fafc';
 
-        const bgColor = isDark ? '#0f172a' : '#f8fafc';
-        const gridColor = isDark ? 'rgba(30,41,59,0.5)' : 'rgba(226,232,240,0.6)';
-        const particleBase = isDark ? '#475569' : '#94a3b8';
+        // Clear
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, w, h);
 
-        // Background
-        ctx.fillStyle = bgColor;
+        // Subtle radial gradient
+        const rg = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.5);
+        rg.addColorStop(0, isDark ? 'rgba(6,182,212,0.02)' : 'rgba(6,182,212,0.01)');
+        rg.addColorStop(1, 'transparent');
+        ctx.fillStyle = rg;
         ctx.fillRect(0, 0, w, h);
 
         // Grid
-        const gridSpacing = 50 * dpr;
-        ctx.strokeStyle = gridColor;
-        ctx.lineWidth = 1;
+        const gs = 40 * dpr;
+        ctx.strokeStyle = isDark ? 'rgba(30,41,59,0.25)' : 'rgba(226,232,240,0.5)';
+        ctx.lineWidth = 0.5;
         ctx.beginPath();
-        for (let x = 0; x < w; x += gridSpacing) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
-        for (let y = 0; y < h; y += gridSpacing) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+        for (let x = 0; x < w; x += gs) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+        for (let y = 0; y < h; y += gs) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
         ctx.stroke();
 
-        // Radial gradient center glow
+        // Center crosshair
         if (isScanning) {
-            const grad = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w * 0.4);
-            grad.addColorStop(0, `${mainColor}${isDark ? '08' : '05'}`);
-            grad.addColorStop(1, 'transparent');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, w, h);
+            const cx = w / 2, cy = (h - 60 * dpr) / 2;
+            ctx.strokeStyle = isDark ? 'rgba(6,182,212,0.08)' : 'rgba(6,182,212,0.05)';
+            ctx.lineWidth = 1;
+            // Concentric circles
+            for (let i = 1; i <= 3; i++) {
+                const radius = i * Math.min(w, h) * 0.12;
+                ctx.beginPath();
+                ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            // Cross
+            ctx.beginPath();
+            ctx.moveTo(cx - 20 * dpr, cy); ctx.lineTo(cx + 20 * dpr, cy);
+            ctx.moveTo(cx, cy - 20 * dpr); ctx.lineTo(cx, cy + 20 * dpr);
+            ctx.stroke();
         }
 
-        // Scan line
+        // Scan sweep
         if (isScanning) {
-            scanLinePos.current += 3 * dpr;
-            if (scanLinePos.current > w) scanLinePos.current = 0;
+            scanPos.current += 2.5 * dpr;
+            if (scanPos.current > w) scanPos.current = 0;
         }
 
-        // Particles (normalized 0-1 coords)
-        particlesRef.current.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
+        // Particles
+        particles.current.forEach(p => {
+            p.x += p.vx; p.y += p.vy;
             if (p.x < 0) p.x = 1; if (p.x > 1) p.x = 0;
             if (p.y < 0) p.y = 1; if (p.y > 1) p.y = 0;
 
-            if (distLevel > 30) {
-                const agitation = distLevel / 2000;
-                p.x += (Math.random() - 0.5) * agitation;
-                p.y += (Math.random() - 0.5) * agitation;
+            if (dist > 30) {
+                p.x += (Math.random() - 0.5) * dist / 2500;
+                p.y += (Math.random() - 0.5) * dist / 2500;
             }
 
-            const px = p.x * w;
-            const py = p.y * h;
-            const distToScan = Math.abs(px - scanLinePos.current);
-            let alpha = isDark ? 0.35 : 0.5;
-            let color = particleBase;
+            const px = p.x * w, py = p.y * h;
+            const dts = Math.abs(px - scanPos.current);
+            let a = isDark ? 0.2 : 0.4;
+            let col = isDark ? '#334155' : '#94a3b8';
 
-            if (isScanning && distToScan < 100 * dpr) {
-                alpha = 0.3 + 0.7 * (1 - distToScan / (100 * dpr));
-                color = mainColor;
+            if (isScanning && dts < 80 * dpr) {
+                a = 0.3 + 0.7 * (1 - dts / (80 * dpr));
+                col = color;
             }
 
-            ctx.fillStyle = color;
-            ctx.globalAlpha = alpha;
+            ctx.globalAlpha = a;
+            ctx.fillStyle = col;
             ctx.beginPath();
-            ctx.arc(px, py, p.size * dpr, 0, Math.PI * 2);
+            ctx.arc(px, py, p.s * dpr, 0, Math.PI * 2);
             ctx.fill();
         });
         ctx.globalAlpha = 1;
 
+        // Connect nearby particles (network effect)
+        if (isScanning) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 0.5;
+            const pts = particles.current;
+            for (let i = 0; i < pts.length; i++) {
+                for (let j = i + 1; j < pts.length; j++) {
+                    const dx = (pts[i].x - pts[j].x) * w;
+                    const dy = (pts[i].y - pts[j].y) * h;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < 80 * dpr) {
+                        ctx.globalAlpha = (1 - d / (80 * dpr)) * 0.08;
+                        ctx.beginPath();
+                        ctx.moveTo(pts[i].x * w, pts[i].y * h);
+                        ctx.lineTo(pts[j].x * w, pts[j].y * h);
+                        ctx.stroke();
+                    }
+                }
+            }
+            ctx.globalAlpha = 1;
+        }
+
         // Scan beam
         if (isScanning) {
-            const beamWidth = 80 * dpr;
-            const gradient = ctx.createLinearGradient(scanLinePos.current - beamWidth, 0, scanLinePos.current, 0);
-            gradient.addColorStop(0, 'transparent');
-            gradient.addColorStop(1, `${mainColor}${isDark ? '18' : '0d'}`);
-            ctx.fillStyle = gradient;
-            ctx.fillRect(scanLinePos.current - beamWidth, 0, beamWidth, h);
+            const bw = 100 * dpr;
+            const g = ctx.createLinearGradient(scanPos.current - bw, 0, scanPos.current, 0);
+            g.addColorStop(0, 'transparent');
+            g.addColorStop(1, isDark ? `${color}12` : `${color}08`);
+            ctx.fillStyle = g;
+            ctx.fillRect(scanPos.current - bw, 0, bw, h);
 
-            ctx.strokeStyle = mainColor;
-            ctx.lineWidth = 2 * dpr;
-            ctx.globalAlpha = isDark ? 0.6 : 0.3;
+            ctx.globalAlpha = isDark ? 0.5 : 0.2;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5 * dpr;
             ctx.beginPath();
-            ctx.moveTo(scanLinePos.current, 0);
-            ctx.lineTo(scanLinePos.current, h);
+            ctx.moveTo(scanPos.current, 0);
+            ctx.lineTo(scanPos.current, h);
             ctx.stroke();
             ctx.globalAlpha = 1;
         }
 
         // Waveform
         if (isScanning) {
-            const waveH = 70 * dpr;
-            const waveY = h - waveH;
+            const wh = 55 * dpr;
+            const wy = h - wh;
 
-            ctx.fillStyle = isDark ? 'rgba(15,23,42,0.85)' : 'rgba(248,250,252,0.85)';
-            ctx.fillRect(0, waveY, w, waveH);
+            // Background
+            const wbg = ctx.createLinearGradient(0, wy, 0, h);
+            wbg.addColorStop(0, isDark ? 'rgba(7,11,20,0.9)' : 'rgba(248,250,252,0.9)');
+            wbg.addColorStop(1, isDark ? 'rgba(7,11,20,0.95)' : 'rgba(248,250,252,0.95)');
+            ctx.fillStyle = wbg;
+            ctx.fillRect(0, wy, w, wh);
 
-            // Separator line
-            ctx.strokeStyle = isDark ? 'rgba(51,65,85,0.4)' : 'rgba(203,213,225,0.5)';
-            ctx.lineWidth = 1;
+            // Divider
+            ctx.strokeStyle = isDark ? 'rgba(51,65,85,0.2)' : 'rgba(203,213,225,0.4)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(0, wy); ctx.lineTo(w, wy); ctx.stroke();
+
+            // Wave
+            const mid = wy + wh / 2;
             ctx.beginPath();
-            ctx.moveTo(0, waveY);
-            ctx.lineTo(w, waveY);
-            ctx.stroke();
-
-            ctx.beginPath();
-            const midY = waveY + waveH / 2;
-            ctx.moveTo(0, midY);
-            for (let i = 0; i < w; i += 3 * dpr) {
-                const amp = (8 + distLevel * 0.5) * dpr;
-                const freq = 0.04 + distLevel * 0.0008;
-                const y = midY + Math.sin(i * freq / dpr - scanLinePos.current * 0.08 / dpr) * amp * (0.5 + Math.random() * 0.5);
+            ctx.moveTo(0, mid);
+            for (let i = 0; i < w; i += 2 * dpr) {
+                const amp = (6 + dist * 0.4) * dpr;
+                const freq = 0.03 + dist * 0.0006;
+                const noise = 0.6 + Math.random() * 0.4;
+                const y = mid + Math.sin(i * freq / dpr - time.current * 3) * amp * noise;
                 ctx.lineTo(i, y);
             }
-            ctx.strokeStyle = mainColor;
-            ctx.lineWidth = 2 * dpr;
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5 * dpr;
             if (isDark) {
-                ctx.shadowColor = mainColor;
-                ctx.shadowBlur = 8 * dpr;
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 6 * dpr;
             }
             ctx.stroke();
             ctx.shadowBlur = 0;
         }
 
-        requestRef.current = requestAnimationFrame(animate);
+        reqRef.current = requestAnimationFrame(animate);
     }, [isScanning, isDark, disturbanceCtx]);
 
     useEffect(() => {
-        requestRef.current = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(requestRef.current);
+        reqRef.current = requestAnimationFrame(animate);
+        return () => cancelAnimationFrame(reqRef.current);
     }, [animate]);
 
-    return (
-        <canvas ref={canvasRef} className="w-full h-full" />
-    );
+    return <canvas ref={canvasRef} className="w-full h-full" />;
 };
 
 export default ScannerCanvas;
