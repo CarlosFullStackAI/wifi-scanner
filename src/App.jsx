@@ -13,6 +13,8 @@ import SettingsPanel from './components/modules/controls/SettingsPanel';
 import CommandsPanel from './components/modules/controls/CommandsPanel';
 import ConfigModal from './components/modules/config/ConfigModal';
 import AiReportModal from './components/modules/config/AiReportModal';
+import WifiPanel from './components/modules/wifi/WifiPanel';
+import SystemConfigPanel from './components/modules/config/SystemConfigPanel';
 
 const App = () => {
   const { themeMode, setThemeMode, isDark } = useTheme();
@@ -144,14 +146,15 @@ const App = () => {
       <Header isScanning={isScanning} isDark={isDark} themeMode={themeMode} setThemeMode={setThemeMode} currentNetwork={currentNetwork} setShowConfig={setShowConfig} />
 
       <main className="relative z-10 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 flex-1 min-h-0">
-        {/* LEFT */}
-        <div className="lg:col-span-3 xl:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0">
+        {/* LEFT - WiFi + Sensor + Logs */}
+        <div className="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
+          <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} />
           <SensorPanel disturbanceDisplay={disturbanceDisplay} isDark={isDark} isScanning={isScanning} />
           <LogPanel logs={logs} isDark={isDark} />
         </div>
 
-        {/* CENTER */}
-        <div className="lg:col-span-6 xl:col-span-6 flex flex-col gap-3 lg:gap-4 min-h-0">
+        {/* CENTER - Scanner */}
+        <div className="lg:col-span-5 flex flex-col gap-3 lg:gap-4 min-h-0">
           <div className={`scanlines relative flex-1 rounded-2xl overflow-hidden transition-all duration-700 ${isDark
             ? `border bg-[#0a0f1a] shadow-2xl shadow-black/60 ${isScanning ? 'border-cyan-500/20 shadow-cyan-500/5' : 'border-slate-800/60'}`
             : 'border border-slate-200 bg-white shadow-xl shadow-slate-200/50'
@@ -197,7 +200,7 @@ const App = () => {
           </div>
 
           {/* History bar */}
-          <div className={`h-14 rounded-xl p-2.5 flex items-end gap-[2px] overflow-hidden ${isDark ? 'glass' : 'glass-light'}`}>
+          <div className={`h-12 rounded-xl p-2 flex items-end gap-[2px] overflow-hidden ${isDark ? 'glass' : 'glass-light'}`}>
             {history.map((h, i) => (
               <div key={i}
                 style={{ height: `${Math.max(6, h)}%` }}
@@ -210,8 +213,9 @@ const App = () => {
           </div>
         </div>
 
-        {/* RIGHT */}
-        <div className="lg:col-span-3 xl:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0">
+        {/* RIGHT - Config + Settings + Commands */}
+        <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
+          <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} hardwareList={hardwareList} setShowConfig={setShowConfig} />
           <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
           <CommandsPanel isScanning={isScanning} toggleScan={toggleScan} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
         </div>
