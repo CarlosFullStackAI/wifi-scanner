@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh auth status:*)",
+      "Bash(winget install:*)",
+      "Bash(cmd.exe /c \"where gh\")",
+      "Bash(export PATH=\"/c/Program Files/GitHub CLI:$PATH\")",
+      "Bash(gh:*)",
+      "Bash(npx wrangler:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(start https://wifi-scanner.pages.dev)",
+      "WebFetch(domain:wifi-scanner.pages.dev)",
+      "Bash(npm ls:*)"
+    ]
+  }
+}
