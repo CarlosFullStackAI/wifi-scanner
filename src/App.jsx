@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Router } from 'lucide-react';
+import { Camera, Router, ShieldCheck, ShieldOff } from 'lucide-react';
 import './App.css';
 import useTheme from './hooks/useTheme';
 import useScannerEngine from './hooks/useScannerEngine';
@@ -199,25 +199,79 @@ const App = () => {
             )}
           </div>
 
-          {/* History bar */}
-          <div className={`h-12 rounded-xl p-2 flex items-end gap-[2px] overflow-hidden ${isDark ? 'glass' : 'glass-light'}`}>
-            {history.map((h, i) => (
-              <div key={i}
-                style={{ height: `${Math.max(6, h)}%` }}
-                className={`history-bar flex-1 rounded-sm ${h < 60
-                  ? 'bg-red-500/60'
-                  : (isDark ? 'bg-cyan-500/30' : 'bg-cyan-400/25')
-                }`}
-              />
-            ))}
-          </div>
+          {/* Scanner toggle hero button */}
+          <button
+            onClick={toggleScan}
+            className={`
+              relative w-full rounded-2xl py-4 flex items-center justify-between px-5 gap-4
+              font-bold tracking-widest uppercase transition-all duration-300 overflow-hidden
+              border-2 active:scale-[0.97] flex-shrink-0
+              ${isScanning
+                ? `border-cyan-500/50 bg-cyan-500/10 shadow-[0_0_28px_rgba(6,182,212,0.18)] ${isDark ? '' : 'shadow-cyan-200'}`
+                : isDark
+                  ? 'border-slate-700/60 bg-slate-800/40 hover:border-cyan-500/30 hover:bg-cyan-500/5'
+                  : 'border-slate-200 bg-white hover:border-cyan-300 hover:bg-cyan-50 shadow-sm'
+              }
+            `}
+          >
+            {/* Pulse rings */}
+            {isScanning && (
+              <>
+                <span className="absolute inset-0 rounded-2xl border-2 border-cyan-400/25 animate-ping" style={{ animationDuration: '1.8s' }} />
+                <span className="absolute inset-0 rounded-2xl border border-cyan-300/10 animate-ping" style={{ animationDuration: '2.6s', animationDelay: '0.4s' }} />
+              </>
+            )}
+
+            {/* Left: icon + label */}
+            <div className="relative z-10 flex items-center gap-3">
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center border-2 transition-all duration-300 flex-shrink-0 ${
+                isScanning
+                  ? 'bg-cyan-500/15 border-cyan-500/40 shadow-[0_0_16px_rgba(6,182,212,0.3)]'
+                  : isDark ? 'bg-slate-700/50 border-slate-600/50' : 'bg-slate-100 border-slate-200'
+              }`}>
+                {isScanning
+                  ? <ShieldCheck className="w-6 h-6 text-cyan-400" />
+                  : <ShieldOff className={`w-6 h-6 ${isDark ? 'text-slate-500' : 'text-slate-400'}`} />
+                }
+              </div>
+              <div className="text-left">
+                <div className={`text-sm font-black tracking-[0.12em] leading-none ${isScanning ? 'text-cyan-400' : isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                  {isScanning ? 'VIGILANCIA ACTIVA' : 'INICIAR VIGILANCIA'}
+                </div>
+                <div className={`text-[9px] mt-1 font-medium tracking-widest ${isScanning ? 'text-cyan-500/70' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                  {isScanning ? 'Pulsa para detener' : 'Activa el escaneo de red'}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: history bars + status dot */}
+            <div className="relative z-10 flex items-center gap-3 flex-shrink-0">
+              <div className="flex items-end gap-[2px] h-8 w-20">
+                {history.slice(-20).map((h, i) => (
+                  <div key={i}
+                    style={{ height: `${Math.max(8, h)}%` }}
+                    className={`flex-1 rounded-sm transition-all ${h < 60
+                      ? 'bg-red-500/60'
+                      : (isDark ? 'bg-cyan-500/30' : 'bg-cyan-400/30')
+                    }`}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <span className={`w-2.5 h-2.5 rounded-full ${isScanning ? 'bg-cyan-400 status-pulse' : isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
+                <span className={`text-[8px] font-mono font-bold uppercase ${isScanning ? 'text-cyan-500' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                  {isScanning ? 'ON' : 'OFF'}
+                </span>
+              </div>
+            </div>
+          </button>
         </div>
 
         {/* RIGHT - Config + Settings + Commands */}
         <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
           <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} hardwareList={hardwareList} setShowConfig={setShowConfig} />
           <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
-          <CommandsPanel isScanning={isScanning} toggleScan={toggleScan} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
+          <CommandsPanel isScanning={isScanning} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
         </div>
       </main>
 
