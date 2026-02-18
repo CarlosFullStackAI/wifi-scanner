@@ -7,13 +7,19 @@ import {
 import Panel from '../../common/Panel';
 
 // ─── API helper ─────────────────────────────────────────────────────────────
-const API_BASE = '/api';
-const IS_LOCAL = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+// Always call the Node server directly on port 3001 (avoids Vite/Wrangler proxy issues)
+const SERVER_URL = 'http://localhost:3001';
+const IS_LOCAL   = typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+    !window.location.hostname.includes('.pages.dev');
 
 const apiFetch = async (path, opts = {}) => {
-    if (!IS_LOCAL) return null; // deployed: no server
+    if (!IS_LOCAL) return null;
     try {
-        const res = await fetch(API_BASE + path, { ...opts, headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) } });
+        const res = await fetch(SERVER_URL + '/api' + path, {
+            ...opts,
+            headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+        });
         return await res.json();
     } catch {
         return null;
@@ -156,10 +162,10 @@ const WifiPanel = ({ isDark, addLog }) => {
                 {IS_LOCAL && (
                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest w-fit ${serverOnline
                         ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
-                        : (isDark ? 'bg-amber-500/10 text-amber-500' : 'bg-amber-50 text-amber-600')
+                        : (isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600')
                     }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-emerald-400' : 'bg-amber-400'}`} />
-                        {serverOnline ? 'API activa' : 'Modo demo · ejecuta npm run server'}
+                        <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                        {serverOnline ? 'Servidor activo · :3001' : 'Sin servidor · corre: npm run server'}
                     </div>
                 )}
 
