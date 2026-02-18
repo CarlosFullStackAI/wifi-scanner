@@ -8,8 +8,8 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// Decode latin1 output from netsh (Windows Spanish)
-const decode = (buf) => buf.toString('latin1');
+// Decode netsh output (Windows outputs UTF-8 on modern systems)
+const decode = (buf) => buf.toString('utf8');
 
 // Parse "Señal : 82%" -> 82
 const parseSignal = (str) => {
@@ -91,7 +91,7 @@ app.get('/api/current', async (req, res) => {
 
         const get = (keys) => {
             for (const key of keys) {
-                const re = new RegExp(key + '\\s*:\\s*(.+)', 'i');
+                const re = new RegExp(key + '[^:]*:\\s*(.+)', 'i');
                 const m = raw.match(re);
                 if (m) return m[1].trim();
             }
