@@ -3,10 +3,9 @@ import { Camera, Router, ShieldCheck, ShieldOff } from 'lucide-react';
 import './App.css';
 import useTheme from './hooks/useTheme';
 import useScannerEngine from './hooks/useScannerEngine';
-import { formatTime } from './utils/helpers';
+import { formatTime, getDynamicColor } from './utils/helpers';
 
 import Header from './components/layout/Header';
-import SensorPanel from './components/modules/status/SensorPanel';
 import LogPanel from './components/modules/logs/LogPanel';
 import ScannerCanvas from './components/modules/scanner/ScannerCanvas';
 import SettingsPanel from './components/modules/controls/SettingsPanel';
@@ -147,11 +146,10 @@ const App = () => {
       <Header isScanning={isScanning} isDark={isDark} themeMode={themeMode} setThemeMode={setThemeMode} currentNetwork={currentNetwork} setShowConfig={setShowConfig} />
 
       <main className="relative z-10 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 flex-1 min-h-0">
-        {/* LEFT - WiFi + Sensor + Logs */}
-        <div className="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-y-auto scrollbar-thin">
+        {/* LEFT - WiFi + Logs */}
+        <div className="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0">
           <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} isSearchingWifi={isSearchingWifi} availableNetworks={availableNetworks} onConnect={connectToNetwork} addLog={addLog} />
-          <SensorPanel disturbanceDisplay={disturbanceDisplay} isDark={isDark} isScanning={isScanning} />
-          <LogPanel logs={logs} isDark={isDark} />
+          <LogPanel logs={logs} isDark={isDark} className="flex-1" />
         </div>
 
         {/* CENTER - Scanner */}
@@ -245,25 +243,38 @@ const App = () => {
               </div>
             </div>
 
-            {/* Right: history bars + status dot */}
-            <div className="relative z-10 flex items-center gap-3 flex-shrink-0">
-              <div className="flex items-end gap-[2px] h-8 w-20">
-                {history.slice(-20).map((h, i) => (
+            {/* Right: mini disturbance gauge + signal bars */}
+            <div className="relative z-10 flex items-center gap-4 flex-shrink-0">
+              {/* Signal history bars */}
+              <div className="flex items-end gap-[2px] h-7 w-14">
+                {history.slice(-14).map((h, i) => (
                   <div key={i}
                     style={{ height: `${Math.max(8, h)}%` }}
-                    className={`flex-1 rounded-sm transition-all ${h < 60
-                      ? 'bg-red-500/60'
-                      : (isDark ? 'bg-cyan-500/30' : 'bg-cyan-400/30')
-                    }`}
+                    className={`flex-1 rounded-sm ${h < 60 ? 'bg-red-500/60' : isDark ? 'bg-cyan-500/30' : 'bg-cyan-400/30'}`}
                   />
                 ))}
               </div>
-              <div className="flex flex-col items-center gap-1">
-                <span className={`w-2.5 h-2.5 rounded-full ${isScanning ? 'bg-cyan-400 status-pulse' : isDark ? 'bg-slate-700' : 'bg-slate-300'}`} />
-                <span className={`text-[8px] font-mono font-bold uppercase ${isScanning ? 'text-cyan-500' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                  {isScanning ? 'ON' : 'OFF'}
-                </span>
-              </div>
+              {/* Mini circular gauge */}
+              {(() => {
+                const gColor = getDynamicColor(disturbanceDisplay, isDark);
+                const r = 20, circ = 2 * Math.PI * r;
+                const offset = circ - (disturbanceDisplay / 100) * circ;
+                return (
+                  <div className="relative w-12 h-12 flex-shrink-0">
+                    <svg className="w-full h-full -rotate-90" viewBox="0 0 48 48">
+                      <circle cx="24" cy="24" r={r} fill="none" stroke={isDark ? '#1e293b' : '#e2e8f0'} strokeWidth="4" />
+                      <circle cx="24" cy="24" r={r} fill="none" stroke={gColor} strokeWidth="4"
+                        strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+                        style={isDark ? { filter: `drop-shadow(0 0 4px ${gColor}80)` } : {}}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-[10px] font-black font-mono leading-none" style={{ color: gColor }}>{disturbanceDisplay}</span>
+                      <span className={`text-[6px] font-bold uppercase ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>dist</span>
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </button>
         </div>
