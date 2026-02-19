@@ -5,6 +5,7 @@ import {
     Loader2, ShieldAlert, Unplug, AlertTriangle, Settings, Link
 } from 'lucide-react';
 import Panel from '../../common/Panel';
+import { getAddressSpace } from '../../../utils/helpers';
 
 // ─── localStorage key ────────────────────────────────────────────────────────
 const LS_KEY = 'nw_server_url';
@@ -72,6 +73,7 @@ const WifiPanel = ({ isDark, addLog, authToken = '' }) => {
     const apiFetch = useCallback(async (path, opts = {}) => {
         if (!serverUrl) return null;
         try {
+            const addrSpace = getAddressSpace(serverUrl);
             const res = await fetch(serverUrl + '/api' + path, {
                 ...opts,
                 headers: {
@@ -80,6 +82,7 @@ const WifiPanel = ({ isDark, addLog, authToken = '' }) => {
                     ...(opts.headers || {}),
                 },
                 signal: AbortSignal.timeout(7000),
+                ...(addrSpace && { targetAddressSpace: addrSpace }),
             });
             return await res.json();
         } catch {
@@ -92,7 +95,7 @@ const WifiPanel = ({ isDark, addLog, authToken = '' }) => {
         if (!onLocalhost) return;
         const check = async () => {
             try {
-                const res = await fetch('http://localhost:3001/api/tunnel', { signal: AbortSignal.timeout(2000) });
+                const res = await fetch('http://localhost:3001/api/tunnel', { signal: AbortSignal.timeout(2000), targetAddressSpace: 'local' });
                 const data = await res.json();
                 if (data?.url && data.url !== serverUrl) {
                     // Tunnel URL available — don't auto-save, just show it in placeholder

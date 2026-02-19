@@ -1,18 +1,20 @@
 import express from 'express';
-import cors from 'cors';
 import { exec, spawn } from 'child_process';
 import crypto from 'crypto';
 
 const app = express();
 const PORT = 3001;
 
-// ── CORS + Private Network Access ─────────────────────────────────────────
+// ── CORS + Private Network Access (Chrome PNA) ────────────────────────────
+// Access-Control-Allow-Private-Network permite que sitios HTTPS (ej. Cloudflare Pages)
+// hagan peticiones a este servidor local sin que Chrome las bloquee.
 app.use((req, res, next) => {
     const origin = req.headers.origin || '*';
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token');
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // cachea el preflight 24h
     if (req.method === 'OPTIONS') return res.status(204).end();
     next();
 });
@@ -30,13 +32,25 @@ const requireAuth = (req, res, next) => {
 
 // Public — auth endpoints (no token needed)
 app.post('/api/auth', (req, res) => {
-    if (req.body?.pin === PIN) {
+    const { pin, email, password } = req.body || {};
+
+    // Autenticación por PIN
+    if (pin && pin === PIN) {
         const token = crypto.randomBytes(20).toString('hex');
         validTokens.add(token);
-        res.json({ ok: true, token });
-    } else {
-        res.status(401).json({ ok: false, error: 'PIN incorrecto' });
+        return res.json({ ok: true, token });
     }
+
+    // Autenticación por correo + contraseña
+    const cfgEmail = process.env.WATCHER_EMAIL;
+    const cfgPass  = process.env.WATCHER_PASSWORD;
+    if (cfgEmail && cfgPass && email === cfgEmail && password === cfgPass) {
+        const token = crypto.randomBytes(20).toString('hex');
+        validTokens.add(token);
+        return res.json({ ok: true, token });
+    }
+
+    res.status(401).json({ ok: false, error: 'Credenciales incorrectas' });
 });
 
 app.get('/api/verify', (req, res) => {

@@ -257,8 +257,8 @@ const FloorPlanCanvas=({isScanning,detectionRef,detectionHistory=[],isDark})=>{
 
             // ── WALL STRUCTURE ────────────────────────────────────────────────
             // Fill entire room bounding box with wall colour — rooms are cut out of this
-            const wallCol  = dark?'#1e2d42':'#4a5568';
-            const wallEdge = dark?'rgba(80,120,165,0.40)':'rgba(80,100,130,0.35)';
+            const wallCol  = dark?'#2d1b4e':'#5b21b6';                              // morado
+            const wallEdge = dark?'rgba(167,139,250,0.55)':'rgba(109,40,217,0.50)'; // borde morado
             const floorCol = dark?'#0d1a2e':'#f7f2e8';
             const floor2   = dark?'#0a1628':'#ede8dc'; // bedroom slightly cooler
             const floor3   = dark?'#0b1a2a':'#eee9dd'; // kitchen
@@ -346,6 +346,30 @@ const FloorPlanCanvas=({isScanning,detectionRef,detectionHistory=[],isDark})=>{
             // Wall inner shadow/edge
             ctx.strokeStyle=wallEdge; ctx.lineWidth=1;
             ctx.strokeRect(X(WT),Y(WT),W(ROOM_W-WT*2),H(ROOM_H-WT*2));
+
+            // ── PERIMETER ─────────────────────────────────────────────────────
+            // Glow exterior
+            ctx.strokeStyle=dark?'rgba(167,139,250,0.18)':'rgba(139,92,246,0.22)';
+            ctx.lineWidth=10;
+            ctx.strokeRect(mg.l-3,mg.t-3,dW+6,dH+6);
+            // Línea exterior gruesa (borde de la casa)
+            ctx.strokeStyle=dark?'rgba(167,139,250,0.95)':'rgba(109,40,217,0.98)';
+            ctx.lineWidth=3;
+            ctx.strokeRect(mg.l,mg.t,dW,dH);
+            // Línea interior fina (doble línea arquitectónica)
+            ctx.strokeStyle=dark?'rgba(196,181,253,0.35)':'rgba(167,139,250,0.40)';
+            ctx.lineWidth=1;
+            ctx.strokeRect(mg.l+4,mg.t+4,dW-8,dH-8);
+            // Esquinas decorativas (brackets en L)
+            const cL=22, cT=3;
+            ctx.strokeStyle=dark?'rgba(216,180,254,1)':'rgba(124,58,237,1)';
+            ctx.lineWidth=cT; ctx.lineCap='square';
+            for(const[cx,cy,sx,sy] of [[mg.l,mg.t,1,1],[mg.l+dW,mg.t,-1,1],[mg.l,mg.t+dH,1,-1],[mg.l+dW,mg.t+dH,-1,-1]]){
+                ctx.beginPath();
+                ctx.moveTo(cx+sx*cL,cy);ctx.lineTo(cx,cy);ctx.lineTo(cx,cy+sy*cL);
+                ctx.stroke();
+            }
+            ctx.lineCap='butt';
 
             // ── HEATMAP (subtle WiFi coverage tint) ───────────────────────────
             if(scan){
