@@ -26,7 +26,8 @@
       "Bash(node -e \"\nconst { exec } = require\\(''child_process''\\);\nexec\\(''netsh wlan show interfaces'', { encoding: ''buffer'', shell: ''cmd.exe'' }, \\(err, out\\) => {\n  const text = out.toString\\(''latin1''\\);\n  console.log\\(text\\);\n}\\);\n\")",
       "Bash(node -e \"\nimport\\(''child_process''\\).then\\(\\({exec}\\) => {\n  exec\\(''netsh wlan show interfaces'', {encoding:''buffer'', shell:''cmd.exe''}, \\(err, out\\) => {\n    console.log\\(out.toString\\(''latin1''\\)\\);\n  }\\);\n}\\);\n\")",
       "Bash(curl:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(start \"\" \"http://localhost:5174\")"
     ]
   }
 }

@@ -4,9 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 // detectionH = height range where the WiFi sensor registers movement (center of mass zone)
 // distMin/distMax = realistic indoor distance from router in meters
 const TARGETS = [
-    { type: 'animal',     label: 'Animal Pequeño', sub: 'Perro / Gato',          hMin: 0.30, hMax: 0.60, dHMin: 0.10, dHMax: 0.40, iMin: 15, iMax: 38 },
-    { type: 'adolescent', label: 'Adolescente',     sub: 'Joven 12–17 años',      hMin: 1.30, hMax: 1.62, dHMin: 0.65, dHMax: 1.20, iMin: 39, iMax: 62 },
-    { type: 'adult',      label: 'Adulto',          sub: 'Persona mayor de edad', hMin: 1.63, hMax: 1.92, dHMin: 0.90, dHMax: 1.55, iMin: 63, iMax: 97 },
+    { type: 'bird',       label: 'Ave',            sub: 'Pájaro / Paloma',       hMin: 0.08, hMax: 0.25, dHMin: 0.05, dHMax: 0.18, iMin: 5,  iMax: 14 },
+    { type: 'rabbit',     label: 'Conejo',          sub: 'Conejo doméstico',      hMin: 0.15, hMax: 0.30, dHMin: 0.08, dHMax: 0.22, iMin: 15, iMax: 24 },
+    { type: 'animal',     label: 'Animal Pequeño', sub: 'Perro / Gato',          hMin: 0.30, hMax: 0.60, dHMin: 0.10, dHMax: 0.40, iMin: 25, iMax: 42 },
+    { type: 'adolescent', label: 'Adolescente',     sub: 'Joven 12–17 años',      hMin: 1.30, hMax: 1.62, dHMin: 0.65, dHMax: 1.20, iMin: 43, iMax: 66 },
+    { type: 'adult',      label: 'Adulto',          sub: 'Persona mayor de edad', hMin: 1.63, hMax: 1.92, dHMin: 0.90, dHMax: 1.55, iMin: 67, iMax: 97 },
 ];
 
 const classify = (impact) => {

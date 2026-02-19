@@ -1,8 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Crosshair, PawPrint, User, UserCheck, Clock, ListFilter } from 'lucide-react';
+import { Crosshair, PawPrint, User, UserCheck, Clock, ListFilter, Bird, Rabbit } from 'lucide-react';
 import Panel from '../../common/Panel';
 
 const TYPE_CONFIG = {
+    bird: {
+        icon: Bird,
+        color: 'text-sky-400',
+        bg: 'bg-sky-500/10',
+        border: 'border-sky-500/20',
+        dot: 'bg-sky-400',
+        threat: 'MÍNIMO',
+        threatColor: 'text-sky-400',
+    },
+    rabbit: {
+        icon: Rabbit,
+        color: 'text-violet-400',
+        bg: 'bg-violet-500/10',
+        border: 'border-violet-500/20',
+        dot: 'bg-violet-400',
+        threat: 'MÍNIMO',
+        threatColor: 'text-violet-400',
+    },
     animal: {
         icon: PawPrint,
         color: 'text-amber-400',

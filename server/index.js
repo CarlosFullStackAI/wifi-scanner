@@ -1,23 +1,51 @@
 import express from 'express';
 import cors from 'cors';
 import { exec, spawn } from 'child_process';
+import crypto from 'crypto';
 
 const app = express();
 const PORT = 3001;
 
 // ── CORS + Private Network Access ─────────────────────────────────────────
-// The "Access-Control-Allow-Private-Network" header is required by Chrome 98+
-// to allow HTTPS pages (e.g. wifi-scanner.pages.dev) to call http://localhost
 app.use((req, res, next) => {
     const origin = req.headers.origin || '*';
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Auth-Token');
     res.setHeader('Access-Control-Allow-Private-Network', 'true');
     if (req.method === 'OPTIONS') return res.status(204).end();
     next();
 });
 app.use(express.json());
+
+// ── Auth: PIN + session tokens ─────────────────────────────────────────────
+const PIN          = process.env.WATCHER_PIN || Math.random().toString(36).slice(2, 8).toUpperCase();
+const validTokens  = new Set();
+
+const requireAuth = (req, res, next) => {
+    const token = req.headers['x-auth-token'];
+    if (token && validTokens.has(token)) return next();
+    res.status(401).json({ ok: false, error: 'No autorizado' });
+};
+
+// Public — auth endpoints (no token needed)
+app.post('/api/auth', (req, res) => {
+    if (req.body?.pin === PIN) {
+        const token = crypto.randomBytes(20).toString('hex');
+        validTokens.add(token);
+        res.json({ ok: true, token });
+    } else {
+        res.status(401).json({ ok: false, error: 'PIN incorrecto' });
+    }
+});
+
+app.get('/api/verify', (req, res) => {
+    const token = req.headers['x-auth-token'];
+    res.json({ ok: !!(token && validTokens.has(token)) });
+});
+
+// All remaining /api/* routes require a valid token
+app.use('/api', requireAuth);
 
 // Decode netsh output (Windows outputs UTF-8 on modern systems)
 const decode = (buf) => buf.toString('utf8');
@@ -256,13 +284,12 @@ function startCloudflared(port) {
 }
 
 app.listen(PORT, () => {
-    console.log(`\n  NET-WATCHER API corriendo en http://localhost:${PORT}`);
-    console.log('  Endpoints:');
-    console.log('    GET  /api/networks   - escanear redes WiFi');
-    console.log('    GET  /api/current    - conexion actual');
-    console.log('    GET  /api/tunnel     - URL publica del tunel');
-    console.log('    POST /api/connect    - conectar a red');
-    console.log('    POST /api/disconnect - desconectar');
-    console.log('\n  Iniciando tunel cloudflared...');
+    console.log(`\n  NET-WATCHER API  →  http://localhost:${PORT}`);
+    console.log('\n  ╔══════════════════════════════════════════╗');
+    console.log(`  ║  PIN DE ACCESO:  ${PIN.padEnd(22)}  ║`);
+    console.log('  ║  Compártelo solo con quien deba entrar  ║');
+    console.log('  ╚══════════════════════════════════════════╝');
+    console.log('\n  (define WATCHER_PIN=TUPIN en el entorno para un PIN fijo)\n');
+    console.log('  Iniciando tunel cloudflared...');
     startCloudflared(PORT);
 });
