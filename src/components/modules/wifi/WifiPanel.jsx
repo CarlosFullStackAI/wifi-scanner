@@ -2,28 +2,21 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     Wifi, WifiOff, Lock, Signal, Globe, ArrowUpDown, Clock,
     RefreshCw, Eye, EyeOff, ChevronDown, ChevronUp, X, Check,
-    Loader2, ShieldAlert, Unplug, AlertTriangle
+    Loader2, ShieldAlert, Unplug, AlertTriangle, Settings, Link
 } from 'lucide-react';
 import Panel from '../../common/Panel';
 
-// ─── API helper ─────────────────────────────────────────────────────────────
-// Always call the Node server directly on port 3001 (avoids Vite/Wrangler proxy issues)
-const SERVER_URL = 'http://localhost:3001';
-const IS_LOCAL   = typeof window !== 'undefined' &&
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-    !window.location.hostname.includes('.pages.dev');
+// ─── localStorage key ────────────────────────────────────────────────────────
+const LS_KEY = 'nw_server_url';
 
-const apiFetch = async (path, opts = {}) => {
-    if (!IS_LOCAL) return null;
-    try {
-        const res = await fetch(SERVER_URL + '/api' + path, {
-            ...opts,
-            headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
-        });
-        return await res.json();
-    } catch {
-        return null;
-    }
+const isLocalhost = () =>
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+const getInitialUrl = () => {
+    const saved = typeof window !== 'undefined' ? localStorage.getItem(LS_KEY) : null;
+    if (saved) return saved;
+    return isLocalhost() ? 'http://localhost:3001' : '';
 };
 
 // ─── Demo fallback ───────────────────────────────────────────────────────────
@@ -58,6 +51,52 @@ const WifiPanel = ({ isDark, addLog }) => {
     const [liveSpeed, setLiveSpeed] = useState({ down: 0, up: 0 });
     const [connectError, setConnectError] = useState('');
 
+    // ── Dynamic server URL (persisted in localStorage) ─────────────────────
+    const [serverUrl, setServerUrl]   = useState(getInitialUrl);
+    const [showUrlCfg, setShowUrlCfg] = useState(false);
+    const [urlDraft, setUrlDraft]     = useState('');
+    const onLocalhost = isLocalhost();
+
+    const saveUrl = useCallback((url) => {
+        const u = url.trim().replace(/\/$/, '');
+        setServerUrl(u);
+        if (u) localStorage.setItem(LS_KEY, u);
+        else   localStorage.removeItem(LS_KEY);
+        setShowUrlCfg(false);
+        setServerOnline(false);
+    }, []);
+
+    // apiFetch uses the dynamic serverUrl
+    const apiFetch = useCallback(async (path, opts = {}) => {
+        if (!serverUrl) return null;
+        try {
+            const res = await fetch(serverUrl + '/api' + path, {
+                ...opts,
+                headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+                signal: AbortSignal.timeout(7000),
+            });
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }, [serverUrl]);
+
+    // Auto-discover tunnel URL from local server (only when on localhost)
+    useEffect(() => {
+        if (!onLocalhost) return;
+        const check = async () => {
+            try {
+                const res = await fetch('http://localhost:3001/api/tunnel', { signal: AbortSignal.timeout(2000) });
+                const data = await res.json();
+                if (data?.url && data.url !== serverUrl) {
+                    // Tunnel URL available — don't auto-save, just show it in placeholder
+                }
+            } catch { /* server not up yet */ }
+        };
+        const t = setTimeout(check, 3000);
+        return () => clearTimeout(t);
+    }, [onLocalhost, serverUrl]);
+
     // Uptime & speed animation
     useEffect(() => {
         const t = setInterval(() => {
@@ -72,14 +111,15 @@ const WifiPanel = ({ isDark, addLog }) => {
 
     // Fetch current connection
     const refreshCurrent = useCallback(async () => {
+        if (!serverUrl) { setServerOnline(false); return; }
         const data = await apiFetch('/current');
         if (data?.ok) {
             setServerOnline(true);
             setCurrent(data);
         } else {
-            setServerOnline(IS_LOCAL ? false : false);
+            setServerOnline(false);
         }
-    }, []);
+    }, [apiFetch, serverUrl]);
 
     useEffect(() => {
         refreshCurrent();
@@ -158,16 +198,70 @@ const WifiPanel = ({ isDark, addLog }) => {
         <Panel title="Red WiFi" icon={Wifi} isDark={isDark} className="flex-none">
             <div className="space-y-3">
 
-                {/* Server status badge */}
-                {IS_LOCAL && (
-                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest w-fit ${serverOnline
-                        ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
-                        : (isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600')
-                    }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${serverOnline ? 'bg-emerald-400' : 'bg-red-400'}`} />
-                        {serverOnline ? 'Servidor activo · :3001' : 'Sin servidor · corre: npm run server'}
+                {/* Server status + URL config */}
+                <div className="space-y-1.5">
+                    <div className="flex items-center gap-1.5">
+                        <div className={`flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest truncate ${
+                            serverOnline
+                                ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
+                                : serverUrl
+                                    ? (isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600')
+                                    : (isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
+                        }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${serverOnline ? 'bg-emerald-400' : serverUrl ? 'bg-red-400' : 'bg-amber-400'}`} />
+                            <span className="truncate">
+                                {serverOnline
+                                    ? `Servidor activo · ${onLocalhost ? ':3001' : serverUrl.replace(/^https?:\/\//, '').slice(0, 22)}`
+                                    : serverUrl
+                                        ? `Sin conexión · npm run server`
+                                        : 'Configura la URL del servidor'
+                                }
+                            </span>
+                        </div>
+                        <button
+                            onClick={() => { setUrlDraft(serverUrl); setShowUrlCfg(v => !v); }}
+                            title="Configurar URL del servidor"
+                            className={`p-1.5 rounded-lg flex-shrink-0 transition-colors ${isDark ? 'hover:bg-white/5 text-slate-600 hover:text-slate-400' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <Settings className="w-3 h-3" />
+                        </button>
                     </div>
-                )}
+
+                    {showUrlCfg && (
+                        <div className={`p-2.5 rounded-xl space-y-2 ${isDark ? 'bg-white/[0.02] border border-slate-700/20' : 'bg-slate-50 border border-slate-100'}`}>
+                            <div className={`flex items-center gap-1.5 text-[8px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                <Link className="w-2.5 h-2.5" />
+                                URL del servidor (local o tunel)
+                            </div>
+                            <div className="flex gap-1.5">
+                                <input
+                                    value={urlDraft}
+                                    onChange={e => setUrlDraft(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && saveUrl(urlDraft)}
+                                    placeholder="https://xxxx.trycloudflare.com"
+                                    autoFocus
+                                    className={`flex-1 py-1.5 px-2.5 rounded-lg text-[10px] font-mono outline-none transition-all ${isDark
+                                        ? 'bg-black/30 border border-slate-700/40 text-white placeholder-slate-700 focus:border-cyan-500/40'
+                                        : 'bg-white border border-slate-200 text-slate-900 placeholder-slate-300 focus:border-cyan-400'
+                                    }`}
+                                />
+                                <button onClick={() => saveUrl(urlDraft)}
+                                    className={`px-2.5 py-1.5 rounded-lg text-[9px] font-bold transition-all ${isDark
+                                        ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 hover:bg-cyan-500/15'
+                                        : 'bg-cyan-50 text-cyan-600 border border-cyan-200 hover:bg-cyan-100'
+                                    }`}>
+                                    <Check className="w-3 h-3" />
+                                </button>
+                            </div>
+                            <p className={`text-[7px] leading-relaxed ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                {onLocalhost
+                                    ? 'Usa http://localhost:3001 (local) o la URL del tunel cloudflared para acceso remoto.'
+                                    : 'Corre npm run server en tu PC → cloudflared mostrará una URL pública. Pégala aquí.'
+                                }
+                            </p>
+                        </div>
+                    )}
+                </div>
 
                 {/* Current connection header */}
                 <div className="flex items-center justify-between">

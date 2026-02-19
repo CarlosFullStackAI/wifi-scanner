@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 
 const app = express();
 const PORT = 3001;
@@ -207,11 +207,51 @@ app.post('/api/disconnect', async (req, res) => {
     }
 });
 
+// ── GET /api/tunnel — devuelve la URL publica del tunel activo ────────────
+let tunnelUrl = null;
+app.get('/api/tunnel', (req, res) => res.json({ url: tunnelUrl }));
+
+// ── Cloudflared quick tunnel (opcional) ──────────────────────────────────
+function startCloudflared(port) {
+    try {
+        const cf = spawn('cloudflared', ['tunnel', '--url', `http://localhost:${port}`], {
+            shell: true,
+            stdio: ['ignore', 'pipe', 'pipe'],
+        });
+
+        const parseUrl = (data) => {
+            if (tunnelUrl) return;
+            const text = data.toString();
+            const m = text.match(/https:\/\/[a-zA-Z0-9-]+\.trycloudflare\.com/);
+            if (m) {
+                tunnelUrl = m[0];
+                console.log('\n  ╔══════════════════════════════════════════════════════╗');
+                console.log('  ║  TUNEL PUBLICO ACTIVO — copia esta URL en la app:   ║');
+                console.log(`  ║  ${tunnelUrl.padEnd(52)}  ║`);
+                console.log('  ╚══════════════════════════════════════════════════════╝\n');
+            }
+        };
+
+        cf.stdout.on('data', parseUrl);
+        cf.stderr.on('data', parseUrl);
+        cf.on('error', () => {
+            console.log('  ℹ  cloudflared no encontrado — acceso solo desde localhost.');
+            console.log('     Descarga cloudflared: https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/\n');
+        });
+        cf.on('close', (code) => { if (code !== 0 && code !== null) tunnelUrl = null; });
+    } catch {
+        // silently ignore if spawn itself throws
+    }
+}
+
 app.listen(PORT, () => {
     console.log(`\n  NET-WATCHER API corriendo en http://localhost:${PORT}`);
     console.log('  Endpoints:');
     console.log('    GET  /api/networks   - escanear redes WiFi');
     console.log('    GET  /api/current    - conexion actual');
+    console.log('    GET  /api/tunnel     - URL publica del tunel');
     console.log('    POST /api/connect    - conectar a red');
-    console.log('    POST /api/disconnect - desconectar\n');
+    console.log('    POST /api/disconnect - desconectar');
+    console.log('\n  Iniciando tunel cloudflared...');
+    startCloudflared(PORT);
 });
