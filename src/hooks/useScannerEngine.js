@@ -29,8 +29,9 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
     const statusRef    = useRef({ disturbance: 0 });
     const detectionRef = useRef(null); // shared with canvas
     const [disturbanceDisplay, setDisturbanceDisplay] = useState(0);
-    const [history, setHistory]           = useState(new Array(60).fill(0));
-    const [lastDetection, setLastDetection] = useState(null);
+    const [history, setHistory]               = useState(new Array(60).fill(0));
+    const [lastDetection, setLastDetection]   = useState(null);
+    const [detectionHistory, setDetectionHistory] = useState([]);
     const sensitivityRef  = useRef(initialSensitivity);
     const nextEventRef    = useRef(0);
 
@@ -58,6 +59,8 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
                     if (det) {
                         setLastDetection(det);
                         detectionRef.current = { ...det, alpha: 1.0 };
+                        // Prepend to history, keep last 20
+                        setDetectionHistory(prev => [det, ...prev].slice(0, 20));
 
                         const logType = det.type === 'adult' ? 'danger' : det.type === 'adolescent' ? 'warning' : 'info';
                         addLogCallback?.(
@@ -82,6 +85,7 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
             detectionRef.current = null;
             setDisturbanceDisplay(0);
             setLastDetection(null);
+            setDetectionHistory([]);
         }
         return () => clearInterval(interval);
     }, [isScanning]);
@@ -94,13 +98,14 @@ const useScannerEngine = (isScanning, initialSensitivity = 65, addLogCallback) =
         if (det) {
             setLastDetection(det);
             detectionRef.current = { ...det, alpha: 1.0 };
+            setDetectionHistory(prev => [det, ...prev].slice(0, 20));
             addLogCallback?.(`⚠ ${det.label} — ${det.height}m · det. ${det.detectionH}m · ${det.distanceM}m router`, 'danger');
         }
         statusRef.current.disturbance = Math.min(100, impact);
         setDisturbanceDisplay(Math.floor(impact));
     };
 
-    return { disturbanceDisplay, history, triggerInterference, currentDisturbanceCtx: statusRef, lastDetection, detectionRef };
+    return { disturbanceDisplay, history, triggerInterference, currentDisturbanceCtx: statusRef, lastDetection, detectionHistory, detectionRef };
 };
 
 export default useScannerEngine;

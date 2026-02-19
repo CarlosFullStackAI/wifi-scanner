@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Crosshair, PawPrint, User, UserCheck, Clock } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Crosshair, PawPrint, User, UserCheck, Clock, ListFilter } from 'lucide-react';
 import Panel from '../../common/Panel';
 
 const TYPE_CONFIG = {
@@ -35,77 +35,127 @@ const TYPE_CONFIG = {
 const fmtAgo = (ts) => {
     const s = Math.floor((Date.now() - ts) / 1000);
     if (s < 60) return `${s}s`;
-    return `${Math.floor(s / 60)}m ${s % 60}s`;
+    if (s < 3600) return `${Math.floor(s / 60)}m`;
+    return `${Math.floor(s / 3600)}h`;
 };
 
-const DetectionPanel = ({ lastDetection, isScanning, isDark }) => {
-    const [, tick] = useState(0);
+const fmtTime = (ts) =>
+    new Date(ts).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 
-    // Re-render every second so "ago" timer updates
+const DetectionPanel = ({ lastDetection, detectionHistory = [], isScanning, isDark }) => {
+    const [, tick] = useState(0);
+    const histRef  = useRef(null);
+
     useEffect(() => {
         const t = setInterval(() => tick(n => n + 1), 1000);
         return () => clearInterval(t);
     }, []);
 
-    const cfg = lastDetection ? TYPE_CONFIG[lastDetection.type] : null;
+    const cfg  = lastDetection ? TYPE_CONFIG[lastDetection.type] : null;
     const Icon = cfg?.icon ?? Crosshair;
 
     return (
-        <Panel title="Detección" icon={Crosshair} isDark={isDark} className="flex-none">
-            {!isScanning ? (
-                <div className={`flex items-center justify-center py-4 text-center ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
-                    <div>
-                        <Crosshair className="w-6 h-6 mx-auto mb-1 opacity-30" />
-                        <p className="text-[9px] uppercase tracking-widest">Escaneo inactivo</p>
-                    </div>
-                </div>
-            ) : !lastDetection ? (
-                <div className={`flex items-center gap-2 py-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 status-pulse flex-shrink-0" />
-                    <span className="text-[9px] uppercase tracking-widest font-bold">Monitoreando zona...</span>
-                </div>
-            ) : (
-                <div className={`rounded-xl border p-3 ${cfg.bg} ${cfg.border}`}>
-                    <div className="flex items-start justify-between gap-2">
-                        {/* Icon + name */}
-                        <div className="flex items-center gap-2.5">
-                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.bg} border ${cfg.border}`}>
-                                <Icon className={`w-5 h-5 ${cfg.color}`} />
-                            </div>
-                            <div>
-                                <div className={`text-xs font-black ${cfg.color}`}>{lastDetection.label}</div>
-                                <div className={`text-[8px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{lastDetection.sub}</div>
-                            </div>
-                        </div>
+        <Panel title="Detección" icon={Crosshair} isDark={isDark} className="flex-1 min-h-0">
+            <div className="flex flex-col gap-3 h-full overflow-hidden">
 
-                        {/* Threat level */}
-                        <div className="text-right flex-shrink-0">
-                            <div className={`text-[7px] uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>Riesgo</div>
-                            <div className={`text-[10px] font-black ${cfg.threatColor}`}>{cfg.threat}</div>
+                {/* ── Current detection ─────────────────────────────── */}
+                {!isScanning ? (
+                    <div className={`flex items-center justify-center py-3 text-center ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
+                        <div>
+                            <Crosshair className="w-5 h-5 mx-auto mb-1 opacity-30" />
+                            <p className="text-[9px] uppercase tracking-widest">Escaneo inactivo</p>
                         </div>
                     </div>
+                ) : !lastDetection ? (
+                    <div className={`flex items-center gap-2 py-2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 status-pulse flex-shrink-0" />
+                        <span className="text-[9px] uppercase tracking-widest font-bold">Monitoreando zona...</span>
+                    </div>
+                ) : (
+                    <div className={`rounded-xl border p-2.5 flex-shrink-0 ${cfg.bg} ${cfg.border}`}>
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex items-center gap-2">
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${cfg.bg} border ${cfg.border}`}>
+                                    <Icon className={`w-4 h-4 ${cfg.color}`} />
+                                </div>
+                                <div>
+                                    <div className={`text-[11px] font-black leading-none ${cfg.color}`}>{lastDetection.label}</div>
+                                    <div className={`text-[8px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{lastDetection.sub}</div>
+                                </div>
+                            </div>
+                            <div className={`text-[9px] font-black px-2 py-0.5 rounded-md ${cfg.bg} border ${cfg.border} ${cfg.threatColor}`}>
+                                {cfg.threat}
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1">
+                            <Stat label="Obj." value={`${lastDetection.height}m`} isDark={isDark} />
+                            <Stat label="Det." value={`${lastDetection.detectionH}m`} isDark={isDark} highlight />
+                            <Stat label="Dist." value={`${lastDetection.distanceM}m`} isDark={isDark} highlight />
+                            <Stat label="Conf." value={`${lastDetection.confidence}%`} isDark={isDark} />
+                        </div>
+                    </div>
+                )}
 
-                    {/* Stats — row 1 */}
-                    <div className="grid grid-cols-3 gap-1.5 mt-2.5">
-                        <Stat label="Altura obj." value={`${lastDetection.height}m`} isDark={isDark} />
-                        <Stat label="Detect. en" value={`${lastDetection.detectionH}m`} isDark={isDark} highlight />
-                        <Stat label="Conf." value={`${lastDetection.confidence}%`} isDark={isDark} />
+                {/* ── History ───────────────────────────────────────── */}
+                {detectionHistory.length > 0 && (
+                    <div className="flex flex-col min-h-0 flex-1">
+                        <div className={`flex items-center gap-1.5 mb-1.5 flex-shrink-0`}>
+                            <ListFilter className={`w-3 h-3 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
+                            <span className={`text-[8px] font-bold uppercase tracking-widest ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                Historial · {detectionHistory.length}
+                            </span>
+                        </div>
+
+                        <div ref={histRef} className="overflow-y-auto flex-1 space-y-[3px] scrollbar-thin pr-0.5">
+                            {detectionHistory.map((det, i) => {
+                                const hcfg = TYPE_CONFIG[det.type];
+                                const HIcon = hcfg.icon;
+                                const isFirst = i === 0;
+                                return (
+                                    <div key={det.timestamp + i}
+                                        className={`flex items-center gap-2 px-2 py-1.5 rounded-lg transition-all ${isFirst
+                                            ? (isDark ? `${hcfg.bg} border ${hcfg.border}` : `${hcfg.bg} border ${hcfg.border}`)
+                                            : (isDark ? 'hover:bg-white/[0.02]' : 'hover:bg-slate-50')
+                                        }`}>
+                                        {/* Type dot */}
+                                        <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${hcfg.dot}`} />
+
+                                        {/* Icon */}
+                                        <HIcon className={`w-3 h-3 flex-shrink-0 ${hcfg.color}`} />
+
+                                        {/* Label + stats */}
+                                        <div className="flex-1 min-w-0">
+                                            <span className={`text-[9px] font-bold ${hcfg.color}`}>{det.label}</span>
+                                            <span className={`text-[8px] font-mono ml-1.5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                                {det.height}m · {det.distanceM}m
+                                            </span>
+                                        </div>
+
+                                        {/* Time */}
+                                        <div className="text-right flex-shrink-0">
+                                            <div className={`text-[8px] font-mono ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
+                                                {fmtTime(det.timestamp)}
+                                            </div>
+                                            <div className={`text-[7px] ${isDark ? 'text-slate-700' : 'text-slate-300'}`}>
+                                                hace {fmtAgo(det.timestamp)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                    {/* Stats — row 2 */}
-                    <div className="grid grid-cols-2 gap-1.5 mt-1.5">
-                        <Stat label="Dist. router" value={`${lastDetection.distanceM}m`} isDark={isDark} highlight />
-                        <Stat label="Hace" value={fmtAgo(lastDetection.timestamp)} isDark={isDark} />
-                    </div>
-                </div>
-            )}
+                )}
+
+            </div>
         </Panel>
     );
 };
 
 const Stat = ({ label, value, isDark, highlight }) => (
-    <div className={`rounded-lg p-1.5 text-center ${highlight ? (isDark ? 'bg-white/[0.06]' : 'bg-white/80') : (isDark ? 'bg-black/20' : 'bg-white/60')}`}>
-        <div className={`text-[7px] uppercase tracking-widest ${highlight ? (isDark ? 'text-cyan-600' : 'text-cyan-500') : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>{label}</div>
-        <div className={`text-[10px] font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</div>
+    <div className={`rounded-md p-1 text-center ${highlight ? (isDark ? 'bg-white/[0.06]' : 'bg-white/80') : (isDark ? 'bg-black/20' : 'bg-white/60')}`}>
+        <div className={`text-[6px] uppercase tracking-widest ${highlight ? (isDark ? 'text-cyan-600' : 'text-cyan-500') : (isDark ? 'text-slate-600' : 'text-slate-400')}`}>{label}</div>
+        <div className={`text-[9px] font-black font-mono ${isDark ? 'text-white' : 'text-slate-900'}`}>{value}</div>
     </div>
 );
 

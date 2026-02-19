@@ -29,7 +29,7 @@ const App = () => {
     setLogs(prev => [...prev.slice(-40), { time, message, type }]);
   };
 
-  const { disturbanceDisplay, history: engineHistory, triggerInterference, currentDisturbanceCtx, lastDetection, detectionRef } = useScannerEngine(isScanning, sensitivity, addLog);
+  const { disturbanceDisplay, history: engineHistory, triggerInterference, currentDisturbanceCtx, lastDetection, detectionHistory, detectionRef } = useScannerEngine(isScanning, sensitivity, addLog);
 
   useEffect(() => { setHistory(engineHistory); }, [engineHistory]);
   useEffect(() => { addLog("NET-WATCHER OS v6.1 STABLE", "system"); }, []);
@@ -280,8 +280,8 @@ const App = () => {
         </div>
 
         {/* RIGHT - Detection + Commands + Settings + System */}
-        <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0">
-          <DetectionPanel lastDetection={lastDetection} isScanning={isScanning} isDark={isDark} />
+        <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-hidden">
+          <DetectionPanel lastDetection={lastDetection} detectionHistory={detectionHistory} isScanning={isScanning} isDark={isDark} />
           <CommandsPanel isScanning={isScanning} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
           <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
           <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} setShowConfig={setShowConfig} />
