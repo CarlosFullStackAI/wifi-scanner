@@ -196,16 +196,23 @@ const App = () => {
   return (
     <div className={`h-screen font-sans text-sm relative overflow-hidden flex flex-col transition-colors duration-500 ${isDark ? 'bg-[#070b14] text-slate-200' : 'bg-slate-50 text-slate-700'}`}>
 
-      {/* Background */}
+      {/* Background grid */}
       <div className={`absolute inset-0 ${isDark ? 'bg-grid' : 'bg-grid-light'} pointer-events-none`} />
+
+      {/* Vignette overlay (dark mode only) */}
+      {isDark && <div className="absolute inset-0 vignette z-[1] pointer-events-none" />}
 
       {/* Ambient glows */}
       {isDark && (
         <>
           <div className="ambient-glow top-[-100px] left-1/4 w-[500px] h-[300px] bg-cyan-500/[0.04]" />
           <div className="ambient-glow bottom-[-50px] right-[10%] w-[400px] h-[300px] bg-indigo-500/[0.04]" style={{ animationDelay: '2s' }} />
+          <div className="ambient-glow top-[30%] left-[-80px] w-[320px] h-[400px] bg-violet-500/[0.03]" style={{ animationDelay: '1s' }} />
           {isScanning && (
-            <div className="ambient-glow top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-cyan-400/[0.06]" />
+            <>
+              <div className="ambient-glow top-1/3 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-cyan-400/[0.06]" />
+              <div className="ambient-glow bottom-[15%] right-[-60px] w-[360px] h-[360px] bg-emerald-500/[0.03]" style={{ animationDelay: '3s' }} />
+            </>
           )}
         </>
       )}
@@ -222,13 +229,16 @@ const App = () => {
         {/* CENTER - Scanner */}
         <div className={`lg:col-span-5 flex flex-col gap-3 lg:gap-4 min-h-0 ${mobileTab === 'scanner' ? 'flex' : 'hidden lg:flex'}`}>
           <div className={`scanlines relative flex-1 rounded-2xl overflow-hidden transition-all duration-700 ${isDark
-            ? `border bg-[#0a0f1a] shadow-2xl shadow-black/60 ${isScanning ? 'border-cyan-500/20 shadow-cyan-500/5' : 'border-slate-800/60'}`
-            : 'border border-slate-200 bg-white shadow-xl shadow-slate-200/50'
+            ? `border bg-[#0a0f1a] shadow-2xl shadow-black/60 ${isScanning ? 'border-cyan-500/20 shadow-cyan-500/5 scan-corners panel-scanning' : 'border-slate-800/60'}`
+            : `border bg-white shadow-xl ${isScanning ? 'border-cyan-300/60 shadow-cyan-100' : 'border-slate-200 shadow-slate-200/50'}`
           }`}>
             {viewMode === 'scanner'
             ? <ScannerCanvas isScanning={isScanning} disturbanceCtx={currentDisturbanceCtx} detectionRef={detectionRef} isDark={isDark} />
             : <FloorPlanCanvas isScanning={isScanning} detectionRef={detectionRef} detectionHistory={detectionHistory} isDark={isDark} />
           }
+
+            {/* Scan beam sweep */}
+            {isScanning && isDark && <div className="scan-beam" />}
 
             {/* View toggle pill */}
             <div className="absolute top-3 right-3 z-20 flex gap-0.5 p-0.5 rounded-lg backdrop-blur-sm border border-white/10 bg-black/40">
@@ -277,8 +287,8 @@ const App = () => {
 
             {isScanning && (
               <div className="absolute top-3 left-3 z-10 animate-fade-in">
-                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold font-mono uppercase tracking-[0.2em] ${isDark ? 'bg-black/60 text-cyan-400 border border-cyan-500/20 backdrop-blur-sm' : 'bg-white/80 text-cyan-600 border border-cyan-200 backdrop-blur-sm'}`}>
-                  <span className="w-2 h-2 rounded-full bg-cyan-400 status-pulse" />
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-bold font-mono uppercase tracking-[0.2em] ${isDark ? 'bg-black/65 text-cyan-400 border border-cyan-500/25 backdrop-blur-sm shadow-[0_0_12px_rgba(6,182,212,0.12)]' : 'bg-white/85 text-cyan-600 border border-cyan-200 backdrop-blur-sm'}`}>
+                  <span className="relative w-2 h-2 rounded-full bg-cyan-400 status-pulse status-ring text-cyan-400" />
                   SCANNING
                 </div>
               </div>
@@ -330,10 +340,10 @@ const App = () => {
                 }
               </div>
               <div className="text-left">
-                <div className={`text-sm font-black tracking-[0.12em] leading-none ${isScanning ? 'text-cyan-400' : isDark ? 'text-slate-200' : 'text-slate-700'}`}>
+                <div className={`text-sm font-black tracking-[0.12em] leading-none ${isScanning ? 'text-cyan-400 text-glow-cyan text-glitch' : isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                   {isScanning ? 'VIGILANCIA ACTIVA' : 'INICIAR VIGILANCIA'}
                 </div>
-                <div className={`text-[9px] mt-1 font-medium tracking-widest ${isScanning ? 'text-cyan-500/70' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                <div className={`text-[9px] mt-1 font-medium tracking-widest ${isScanning ? 'text-cyan-500/70 cursor-blink' : isDark ? 'text-slate-600' : 'text-slate-400'}`}>
                   {isScanning ? 'Pulsa para detener' : 'Activa el escaneo de red'}
                 </div>
               </div>
@@ -346,7 +356,13 @@ const App = () => {
                 {history.slice(-14).map((h, i) => (
                   <div key={i}
                     style={{ height: `${Math.max(8, h)}%` }}
-                    className={`flex-1 rounded-sm ${h < 60 ? 'bg-red-500/60' : isDark ? 'bg-cyan-500/30' : 'bg-cyan-400/30'}`}
+                    className={`flex-1 rounded-sm transition-all duration-150 ${
+                      h < 60
+                        ? 'bg-red-500/65'
+                        : h > 85
+                          ? (isDark ? 'bg-cyan-400/55' : 'bg-cyan-400/45')
+                          : (isDark ? 'bg-cyan-500/32' : 'bg-cyan-400/28')
+                    }`}
                   />
                 ))}
               </div>
@@ -361,7 +377,7 @@ const App = () => {
                       <circle cx="24" cy="24" r={r} fill="none" stroke={isDark ? '#1e293b' : '#e2e8f0'} strokeWidth="4" />
                       <circle cx="24" cy="24" r={r} fill="none" stroke={gColor} strokeWidth="4"
                         strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
-                        style={isDark ? { filter: `drop-shadow(0 0 4px ${gColor}80)` } : {}}
+                        style={isDark ? { filter: `drop-shadow(0 0 6px ${gColor}cc) drop-shadow(0 0 14px ${gColor}55)` } : {}}
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">

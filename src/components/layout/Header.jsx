@@ -6,11 +6,14 @@ const Header = ({ isScanning, isDark, themeMode, setThemeMode, currentNetwork, s
         <header className={`relative z-30 px-4 lg:px-5 py-2.5 flex justify-between items-center flex-none border-b transition-all duration-500 backdrop-blur-xl ${isDark ? 'bg-[#070b14]/80 border-slate-800/40' : 'bg-white/80 border-slate-200'}`}>
             <div className="flex items-center gap-3">
                 {/* Logo icon */}
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-500 ${isScanning
-                    ? 'bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-lg shadow-cyan-500/25'
+                <div className={`relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-500 ${isScanning
+                    ? 'bg-gradient-to-br from-cyan-400 to-cyan-600 shadow-lg shadow-cyan-500/30'
                     : (isDark ? 'bg-slate-800 border border-slate-700/50' : 'bg-slate-100 border border-slate-200')
                 }`}>
-                    <Wifi className={`w-4 h-4 ${isScanning ? 'text-white' : (isDark ? 'text-slate-500' : 'text-slate-400')}`} />
+                    {isScanning && (
+                        <span className="absolute inset-0 rounded-lg bg-cyan-400/22 animate-ping" style={{ animationDuration: '2.2s' }} />
+                    )}
+                    <Wifi className={`relative w-4 h-4 ${isScanning ? 'text-white' : (isDark ? 'text-slate-500' : 'text-slate-400')}`} />
                 </div>
 
                 <div>
@@ -58,11 +61,13 @@ const Header = ({ isScanning, isDark, themeMode, setThemeMode, currentNetwork, s
                 </div>
 
                 {/* Status */}
-                <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono uppercase tracking-widest border ${isScanning
-                    ? (isDark ? 'border-cyan-500/20 text-cyan-400 bg-cyan-500/5' : 'border-cyan-300 text-cyan-600 bg-cyan-50')
+                <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono uppercase tracking-widest border transition-all duration-500 ${isScanning
+                    ? (isDark
+                        ? 'border-cyan-500/25 text-cyan-400 bg-cyan-500/8 shadow-[0_0_10px_rgba(6,182,212,0.12)]'
+                        : 'border-cyan-300 text-cyan-600 bg-cyan-50')
                     : (isDark ? 'border-slate-800 text-slate-600 bg-slate-900/50' : 'border-slate-200 text-slate-400 bg-slate-50')
                 }`}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${isScanning ? 'bg-cyan-400 status-pulse' : (isDark ? 'bg-slate-700' : 'bg-slate-300')}`} />
+                    <span className={`relative w-1.5 h-1.5 rounded-full ${isScanning ? 'bg-cyan-400 status-pulse status-ring text-cyan-400' : (isDark ? 'bg-slate-700' : 'bg-slate-300')}`} />
                     {isScanning ? 'ACTIVE' : 'IDLE'}
                 </div>
 
