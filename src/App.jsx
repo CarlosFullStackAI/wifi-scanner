@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Camera, Router, ShieldCheck, ShieldOff } from 'lucide-react';
+import { Camera, Router, ShieldCheck, ShieldOff, Radio, Map } from 'lucide-react';
 import './App.css';
 import useTheme from './hooks/useTheme';
 import useScannerEngine from './hooks/useScannerEngine';
@@ -8,6 +8,7 @@ import { formatTime, getDynamicColor } from './utils/helpers';
 import Header from './components/layout/Header';
 import LogPanel from './components/modules/logs/LogPanel';
 import ScannerCanvas from './components/modules/scanner/ScannerCanvas';
+import FloorPlanCanvas from './components/modules/scanner/FloorPlanCanvas';
 import SettingsPanel from './components/modules/controls/SettingsPanel';
 import CommandsPanel from './components/modules/controls/CommandsPanel';
 import ConfigModal from './components/modules/config/ConfigModal';
@@ -46,6 +47,7 @@ const App = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [aiReport, setAiReport] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState('scanner'); // 'scanner' | 'floorplan'
 
   const toggleScan = () => {
     if (!isScanning) { setIsScanning(true); addLog("Motor de escaneo iniciado", "success"); }
@@ -158,7 +160,36 @@ const App = () => {
             ? `border bg-[#0a0f1a] shadow-2xl shadow-black/60 ${isScanning ? 'border-cyan-500/20 shadow-cyan-500/5' : 'border-slate-800/60'}`
             : 'border border-slate-200 bg-white shadow-xl shadow-slate-200/50'
           }`}>
-            <ScannerCanvas isScanning={isScanning} disturbanceCtx={currentDisturbanceCtx} detectionRef={detectionRef} isDark={isDark} />
+            {viewMode === 'scanner'
+            ? <ScannerCanvas isScanning={isScanning} disturbanceCtx={currentDisturbanceCtx} detectionRef={detectionRef} isDark={isDark} />
+            : <FloorPlanCanvas isScanning={isScanning} detectionRef={detectionRef} detectionHistory={detectionHistory} isDark={isDark} />
+          }
+
+            {/* View toggle pill */}
+            <div className="absolute top-3 right-3 z-20 flex gap-0.5 p-0.5 rounded-lg backdrop-blur-sm border border-white/10 bg-black/40">
+              <button
+                onClick={() => setViewMode('scanner')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${
+                  viewMode === 'scanner'
+                    ? 'bg-cyan-500/25 text-cyan-400'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Radio className="w-2.5 h-2.5" />
+                Scanner
+              </button>
+              <button
+                onClick={() => setViewMode('floorplan')}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[8px] font-bold uppercase tracking-widest transition-all ${
+                  viewMode === 'floorplan'
+                    ? 'bg-cyan-500/25 text-cyan-400'
+                    : 'text-slate-500 hover:text-slate-300'
+                }`}
+              >
+                <Map className="w-2.5 h-2.5" />
+                Plano
+              </button>
+            </div>
 
             {hardwareList.map(dev => {
               const active = dev.status === 'recording' || dev.status === 'online';
