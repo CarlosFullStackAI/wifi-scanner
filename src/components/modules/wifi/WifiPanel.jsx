@@ -15,19 +15,12 @@ const isLocalhost = () =>
     (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
 const getInitialUrl = () => {
-    const saved = typeof window !== 'undefined' ? localStorage.getItem(LS_KEY) : null;
-    if (saved) return saved;
-    // Always try localhost:3001 by default — works from any domain if the user
-    // runs "npm run server" on this machine (Chrome allows HTTPS→localhost via PNA header)
-    return 'http://localhost:3001';
+    if (typeof window === 'undefined') return 'http://localhost:3001';
+    // ?server=https://xxxx.trycloudflare.com  →  auto-configure and save
+    const param = new URLSearchParams(window.location.search).get('server');
+    if (param) { localStorage.setItem(LS_KEY, param); return param; }
+    return localStorage.getItem(LS_KEY) || 'http://localhost:3001';
 };
-
-// ─── Demo fallback ───────────────────────────────────────────────────────────
-const DEMO_NETWORKS = [
-    { ssid: 'MOVISTAR-FIBRA-99', signal: 92, sec: 'WPA3', band: '5 GHz', channel: '36', radio: '802.11ax' },
-    { ssid: 'INVITADOS_CORP',    signal: 68, sec: 'WPA2', band: '2.4 GHz', channel: '6',  radio: '802.11n'  },
-    { ssid: 'CAFE_FREE',         signal: 41, sec: 'OPEN', band: '2.4 GHz', channel: '11', radio: '802.11n'  },
-];
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 const getSignalBars = (s) => s > 80 ? 4 : s > 60 ? 3 : s > 35 ? 2 : 1;
@@ -135,6 +128,13 @@ const WifiPanel = ({ isDark, addLog }) => {
         return () => clearInterval(t);
     }, [refreshCurrent]);
 
+    // Auto-scan when server first comes online
+    const prevOnline = React.useRef(false);
+    useEffect(() => {
+        if (serverOnline && !prevOnline.current) handleScan();
+        prevOnline.current = serverOnline;
+    }, [serverOnline, handleScan]);
+
     // Scan networks
     const handleScan = useCallback(async () => {
         setScanning(true);
@@ -149,13 +149,12 @@ const WifiPanel = ({ isDark, addLog }) => {
                 setNetworks(data.networks);
                 addLog?.(`${data.networks.length} redes encontradas`, 'success');
             } else {
-                setNetworks(DEMO_NETWORKS);
-                addLog?.('Usando datos de demo (servidor no disponible)', 'warning');
+                setNetworks([]);
+                addLog?.('Error al leer redes del servidor', 'warning');
             }
         } else {
-            await new Promise(r => setTimeout(r, 800));
-            setNetworks(DEMO_NETWORKS);
-            addLog?.('Modo demo: servidor local no activo', 'warning');
+            setNetworks([]);
+            addLog?.('Servidor no disponible — corre npm run server', 'warning');
         }
         setScanning(false);
     }, [serverOnline, addLog]);
@@ -181,9 +180,8 @@ const WifiPanel = ({ isDark, addLog }) => {
                 addLog?.(`Error: ${data?.error}`, 'danger');
             }
         } else {
-            await new Promise(r => setTimeout(r, 1200));
-            setCurrent({ connected: true, ssid: selected.ssid, ip: '192.168.1.' + Math.floor(Math.random() * 200 + 2), signal: selected.signal, speed: { rx: 200, tx: 150 } });
-            addLog?.(`Conectado a ${selected.ssid} (demo)`, 'success');
+            setConnectError('Servidor no disponible');
+            addLog?.('Servidor no disponible para conectar', 'warning');
         }
 
         setConnecting(false);
@@ -364,9 +362,19 @@ const WifiPanel = ({ isDark, addLog }) => {
                         )}
 
                         {!scanning && networks.length === 0 && (
-                            <div className={`text-center py-5 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
-                                <WifiOff className="w-5 h-5 mx-auto mb-1 opacity-30" />
-                                <p className="text-[9px] uppercase tracking-widest">Sin redes detectadas</p>
+                            <div className={`text-center py-4 space-y-2 ${isDark ? 'text-slate-600' : 'text-slate-400'}`}>
+                                <WifiOff className="w-5 h-5 mx-auto opacity-30" />
+                                {serverOnline
+                                    ? <p className="text-[9px] uppercase tracking-widest">Sin redes detectadas</p>
+                                    : <>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest">Servidor offline</p>
+                                        <p className="text-[8px] leading-relaxed px-2">
+                                            Corre <span className="font-mono">npm run server</span> en tu PC.<br/>
+                                            Luego pega la URL del túnel en ⚙ o usa:<br/>
+                                            <span className="font-mono break-all">?server=https://xxxx.trycloudflare.com</span>
+                                        </p>
+                                    </>
+                                }
                             </div>
                         )}
 
