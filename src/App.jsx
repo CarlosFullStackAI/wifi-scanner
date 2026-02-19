@@ -6,7 +6,6 @@ import useScannerEngine from './hooks/useScannerEngine';
 import { formatTime, getDynamicColor } from './utils/helpers';
 
 import Header from './components/layout/Header';
-import LockScreen from './components/auth/LockScreen';
 import LogPanel from './components/modules/logs/LogPanel';
 import ScannerCanvas from './components/modules/scanner/ScannerCanvas';
 import FloorPlanCanvas from './components/modules/scanner/FloorPlanCanvas';
@@ -20,54 +19,8 @@ import DetectionPanel from './components/modules/detection/DetectionPanel';
 import MobileNav from './components/mobile/MobileNav';
 import HistoryPanel from './components/modules/history/HistoryPanel';
 
-const LS_TOKEN  = 'nw_token';
-const LS_SERVER = 'nw_server_url';
-const getServer = () => localStorage.getItem(LS_SERVER) || 'http://localhost:3001';
-
 const App = () => {
   const { themeMode, setThemeMode, isDark } = useTheme();
-
-  // ── Auth state ─────────────────────────────────────────────────────────
-  const [authToken,    setAuthToken]    = useState(() => localStorage.getItem(LS_TOKEN) || '');
-  const [isAuthed,     setIsAuthed]     = useState(false);
-  const [authChecking, setAuthChecking] = useState(true);
-
-  useEffect(() => {
-    const token = localStorage.getItem(LS_TOKEN);
-    if (!token) { setAuthChecking(false); return; }
-    const server = getServer();
-    const isLocal = server.includes('localhost') || server.includes('127.0.0.1');
-    fetch(`${server}/api/verify`, {
-      headers: { 'X-Auth-Token': token },
-      signal: AbortSignal.timeout(4000),
-      ...(isLocal && { targetAddressSpace: 'loopback' }),
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d.ok) { setAuthToken(token); setIsAuthed(true); }
-        else      { localStorage.removeItem(LS_TOKEN); }
-      })
-      .catch(() => {
-        // Server unreachable — still show lock screen
-      })
-      .finally(() => setAuthChecking(false));
-  }, []);
-
-  const handleAuth = (token) => {
-    localStorage.setItem(LS_TOKEN, token);
-    setAuthToken(token);
-    setIsAuthed(true);
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem(LS_TOKEN);
-    setAuthToken('');
-    setIsAuthed(false);
-  };
-
-  // Show lock screen until auth is confirmed
-  if (authChecking) return null; // brief flash prevention
-  if (!isAuthed)   return <LockScreen onAuth={handleAuth} isDark={isDark} />;
 
   const [isScanning, setIsScanning] = useState(false);
   const [logs, setLogs] = useState([]);
@@ -224,12 +177,12 @@ const App = () => {
         </>
       )}
 
-      <Header isScanning={isScanning} isDark={isDark} themeMode={themeMode} setThemeMode={setThemeMode} currentNetwork={currentNetwork} setShowConfig={setShowConfig} onLogout={handleLogout} />
+      <Header isScanning={isScanning} isDark={isDark} themeMode={themeMode} setThemeMode={setThemeMode} currentNetwork={currentNetwork} setShowConfig={setShowConfig} />
 
       <main className="relative z-10 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 flex-1 min-h-0 pb-14 lg:pb-0">
         {/* LEFT - WiFi + Logs */}
         <div className={`lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0 ${mobileTab === 'wifi' ? 'flex' : 'hidden lg:flex'}`}>
-          <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} isSearchingWifi={isSearchingWifi} availableNetworks={availableNetworks} onConnect={connectToNetwork} addLog={addLog} authToken={authToken} />
+          <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} isSearchingWifi={isSearchingWifi} availableNetworks={availableNetworks} onConnect={connectToNetwork} addLog={addLog} />
           <LogPanel logs={logs} isDark={isDark} className="flex-1" />
         </div>
 
@@ -420,7 +373,6 @@ const App = () => {
         onChange={handleMobileTab}
         isDark={isDark}
         hasAlert={!!(lastDetection && lastDetection.type === 'adult')}
-        onLogout={handleLogout}
       />
 
       {/* Footer status bar */}

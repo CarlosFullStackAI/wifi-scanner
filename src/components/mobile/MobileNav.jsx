@@ -41,6 +41,7 @@ const MobileNav = ({ activeTab, onChange, isDark, hasAlert }) => (
                 </button>
             );
         })}
+
     </nav>
 );
 
