@@ -1,5 +1,5 @@
 import React from 'react';
-import { Wifi, Server, Radio, Sun, Moon, Settings, LogOut } from 'lucide-react';
+import { Wifi, Server, Radio, Sun, Moon, Monitor, Settings, LogOut } from 'lucide-react';
 
 const Header = ({ isScanning, isDark, themeMode, setThemeMode, currentNetwork, setShowConfig, onLogout }) => {
     return (
@@ -31,31 +31,31 @@ const Header = ({ isScanning, isDark, themeMode, setThemeMode, currentNetwork, s
             </div>
 
             <div className="flex items-center gap-2">
-                {/* Theme toggle — pill switch */}
-                <button
-                    onClick={() => setThemeMode(isDark ? 'light' : 'dark')}
-                    title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
-                    className={`relative flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-300 select-none ${
-                        isDark
-                            ? 'bg-slate-800/70 border-slate-700/50 hover:border-slate-600/70'
-                            : 'bg-white border-slate-200 shadow-sm hover:border-slate-300'
-                    }`}
-                >
-                    {/* Sun icon */}
-                    <Sun className={`w-3.5 h-3.5 transition-all duration-300 ${!isDark ? 'text-amber-500 scale-110' : 'text-slate-600'}`} />
-
-                    {/* Sliding pill track */}
-                    <div className={`relative w-9 h-5 rounded-full transition-colors duration-300 ${isDark ? 'bg-slate-700' : 'bg-amber-100 border border-amber-200'}`}>
-                        <span className={`absolute top-0.5 w-4 h-4 rounded-full shadow-sm transition-all duration-300 ${
-                            isDark
-                                ? 'left-[18px] bg-slate-900 border border-slate-600'
-                                : 'left-0.5 bg-amber-400 border border-amber-300'
-                        }`} />
-                    </div>
-
-                    {/* Moon icon */}
-                    <Moon className={`w-3.5 h-3.5 transition-all duration-300 ${isDark ? 'text-cyan-400 scale-110' : 'text-slate-400'}`} />
-                </button>
+                {/* Theme toggle — 3-way selector */}
+                <div className={`flex items-center gap-0.5 p-0.5 rounded-xl border transition-all duration-300 ${
+                    isDark
+                        ? 'bg-slate-800/70 border-slate-700/50'
+                        : 'bg-slate-100 border-slate-200 shadow-sm'
+                }`}>
+                    {[
+                        { mode: 'light',  Icon: Sun,     title: 'Modo claro',   active: 'text-amber-500 bg-amber-500/15 border-amber-400/30' },
+                        { mode: 'system', Icon: Monitor, title: 'Modo sistema', active: isDark ? 'text-cyan-400 bg-cyan-500/15 border-cyan-500/30' : 'text-blue-600 bg-blue-500/12 border-blue-400/30' },
+                        { mode: 'dark',   Icon: Moon,    title: 'Modo oscuro',  active: 'text-indigo-400 bg-indigo-500/15 border-indigo-500/30' },
+                    ].map(({ mode, Icon, title, active }) => (
+                        <button
+                            key={mode}
+                            onClick={() => setThemeMode(mode)}
+                            title={title}
+                            className={`p-1.5 rounded-lg border transition-all duration-200 ${
+                                themeMode === mode
+                                    ? `${active}`
+                                    : `border-transparent ${isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'}`
+                            }`}
+                        >
+                            <Icon className="w-3.5 h-3.5" />
+                        </button>
+                    ))}
+                </div>
 
                 {/* Status */}
                 <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[9px] font-bold font-mono uppercase tracking-widest border ${isScanning
