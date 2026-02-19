@@ -1,50 +1,74 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, Wifi, Loader2, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Wifi, Loader2, AlertTriangle, Eye, EyeOff, Mail, Hash, Link } from 'lucide-react';
 
-const SERVER = 'http://localhost:3001';
+const LS_SERVER = 'nw_server_url';
+const getServer = () =>
+    (typeof window !== 'undefined' && localStorage.getItem(LS_SERVER)) || 'http://localhost:3001';
 
 const LockScreen = ({ onAuth, isDark }) => {
+    const [mode, setMode]       = useState('email'); // 'email' | 'pin'
+    const [email, setEmail]     = useState('');
+    const [password, setPassword] = useState('');
     const [pin, setPin]         = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError]     = useState('');
     const [shake, setShake]     = useState(false);
-    const [showPin, setShowPin] = useState(false);
-    const inputRef              = useRef(null);
+    const [showPwd, setShowPwd] = useState(false);
+    const [serverUrl, setServerUrl] = useState(getServer);
+    const [showUrlCfg, setShowUrlCfg] = useState(false);
+    const [urlDraft, setUrlDraft]     = useState('');
+    const emailRef              = useRef(null);
+    const pinRef                = useRef(null);
 
-    useEffect(() => { inputRef.current?.focus(); }, []);
+    useEffect(() => {
+        if (mode === 'email') emailRef.current?.focus();
+        else                  pinRef.current?.focus();
+        setError('');
+    }, [mode]);
+
+    const triggerShake = (msg) => {
+        setError(msg);
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+    };
 
     const handleSubmit = async (e) => {
         e?.preventDefault();
-        if (!pin.trim() || loading) return;
         setLoading(true);
         setError('');
 
+        const body = mode === 'email'
+            ? { email: email.trim(), password }
+            : { pin: pin.trim().toUpperCase() };
+
+        const isLocal = serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1');
         try {
-            const res  = await fetch(`${SERVER}/api/auth`, {
+            const res  = await fetch(`${serverUrl}/api/auth`, {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ pin: pin.trim().toUpperCase() }),
+                body:    JSON.stringify(body),
                 signal:  AbortSignal.timeout(6000),
+                ...(isLocal && { targetAddressSpace: 'loopback' }),
             });
             const data = await res.json();
 
             if (data.ok && data.token) {
                 onAuth(data.token);
             } else {
-                setError(data.error || 'PIN incorrecto');
-                setPin('');
-                setShake(true);
-                setTimeout(() => setShake(false), 500);
-                inputRef.current?.focus();
+                if (mode === 'email') setPassword('');
+                else setPin('');
+                triggerShake(data.error || 'Credenciales incorrectas');
+                if (mode === 'email') emailRef.current?.focus();
+                else                  pinRef.current?.focus();
             }
         } catch {
-            setError('No se pudo conectar al servidor. Asegúrate de que esté corriendo.');
-            setShake(true);
-            setTimeout(() => setShake(false), 500);
+            triggerShake('No se pudo conectar al servidor. Asegúrate de que esté corriendo.');
         } finally {
             setLoading(false);
         }
     };
+
+    const canSubmit = mode === 'email' ? (email.trim() && password) : pin.trim();
 
     return (
         <div className={`fixed inset-0 z-50 flex flex-col items-center justify-center transition-colors duration-500 ${
@@ -78,79 +102,189 @@ const LockScreen = ({ onAuth, isDark }) => {
                 </div>
 
                 {/* Card */}
-                <div className={`rounded-2xl p-6 border ${
+                <div className={`rounded-2xl border overflow-hidden ${
                     isDark
                         ? 'bg-white/[0.03] border-slate-700/40 backdrop-blur-sm'
                         : 'bg-white border-slate-200 shadow-xl shadow-slate-100'
                 }`}>
-                    <div className="flex items-center gap-2 mb-4">
-                        <ShieldCheck className={`w-4 h-4 ${isDark ? 'text-cyan-500' : 'text-cyan-600'}`} />
-                        <span className={`text-[10px] font-bold uppercase tracking-[0.2em] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                            Introduce el PIN del servidor
-                        </span>
-                    </div>
 
-                    <form onSubmit={handleSubmit} className="space-y-3">
-                        {/* PIN input */}
-                        <div className="relative">
-                            <input
-                                ref={inputRef}
-                                type={showPin ? 'text' : 'password'}
-                                value={pin}
-                                onChange={e => { setPin(e.target.value.toUpperCase()); setError(''); }}
-                                onKeyDown={e => e.key === 'Enter' && handleSubmit()}
-                                placeholder="••••••"
-                                maxLength={12}
-                                autoComplete="off"
-                                className={`w-full py-3 px-4 pr-11 rounded-xl text-base font-mono font-bold tracking-[0.3em] text-center outline-none transition-all border-2 ${
-                                    error
-                                        ? 'border-red-500/50 bg-red-500/5'
-                                        : isDark
-                                            ? 'bg-black/30 border-slate-700/50 text-white placeholder-slate-700 focus:border-cyan-500/50'
-                                            : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-300 focus:border-cyan-400'
-                                }`}
-                            />
+                    {/* Tabs */}
+                    <div className={`flex border-b ${isDark ? 'border-slate-700/40' : 'border-slate-100'}`}>
+                        {[
+                            { id: 'email', label: 'Correo', Icon: Mail },
+                            { id: 'pin',   label: 'PIN',    Icon: Hash },
+                        ].map(({ id, label, Icon }) => (
                             <button
-                                type="button"
-                                onClick={() => setShowPin(v => !v)}
-                                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${
-                                    isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
+                                key={id}
+                                onClick={() => setMode(id)}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[10px] font-bold uppercase tracking-[0.15em] transition-all ${
+                                    mode === id
+                                        ? (isDark ? 'text-cyan-400 border-b-2 border-cyan-400 -mb-px bg-cyan-500/5' : 'text-cyan-600 border-b-2 border-cyan-500 -mb-px bg-cyan-50/50')
+                                        : (isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600')
                                 }`}
                             >
-                                {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                <Icon className="w-3 h-3" />{label}
                             </button>
-                        </div>
+                        ))}
+                    </div>
 
-                        {/* Error */}
-                        {error && (
-                            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
-                                <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
-                                <span className="text-[10px] text-red-400 leading-relaxed">{error}</span>
-                            </div>
-                        )}
+                    <div className="p-6">
+                        <form onSubmit={handleSubmit} className="space-y-3">
 
-                        {/* Submit */}
-                        <button
-                            type="submit"
-                            disabled={!pin.trim() || loading}
-                            className={`w-full py-3 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
-                                isDark
-                                    ? 'bg-cyan-500/15 border-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/25 hover:border-cyan-500/50'
-                                    : 'bg-cyan-600 text-white border-2 border-cyan-700 hover:bg-cyan-700'
-                            }`}
-                        >
-                            {loading
-                                ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
-                                : <><ShieldCheck className="w-4 h-4" /> Acceder</>
-                            }
-                        </button>
-                    </form>
+                            {mode === 'email' ? (
+                                <>
+                                    {/* Email */}
+                                    <input
+                                        ref={emailRef}
+                                        type="email"
+                                        value={email}
+                                        onChange={e => { setEmail(e.target.value); setError(''); }}
+                                        placeholder="correo@ejemplo.com"
+                                        autoComplete="email"
+                                        className={`w-full py-3 px-4 rounded-xl text-sm outline-none transition-all border-2 ${
+                                            error
+                                                ? 'border-red-500/50 bg-red-500/5'
+                                                : isDark
+                                                    ? 'bg-black/30 border-slate-700/50 text-white placeholder-slate-600 focus:border-cyan-500/50'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-cyan-400'
+                                        }`}
+                                    />
+                                    {/* Password */}
+                                    <div className="relative">
+                                        <input
+                                            type={showPwd ? 'text' : 'password'}
+                                            value={password}
+                                            onChange={e => { setPassword(e.target.value); setError(''); }}
+                                            onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                                            placeholder="Contraseña"
+                                            autoComplete="current-password"
+                                            className={`w-full py-3 px-4 pr-11 rounded-xl text-sm outline-none transition-all border-2 ${
+                                                error
+                                                    ? 'border-red-500/50 bg-red-500/5'
+                                                    : isDark
+                                                        ? 'bg-black/30 border-slate-700/50 text-white placeholder-slate-600 focus:border-cyan-500/50'
+                                                        : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-cyan-400'
+                                            }`}
+                                        />
+                                        <button type="button" onClick={() => setShowPwd(v => !v)}
+                                            className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'}`}>
+                                            {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </>
+                            ) : (
+                                /* PIN input */
+                                <div className="relative">
+                                    <input
+                                        ref={pinRef}
+                                        type={showPwd ? 'text' : 'password'}
+                                        value={pin}
+                                        onChange={e => { setPin(e.target.value.toUpperCase()); setError(''); }}
+                                        onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+                                        placeholder="••••••"
+                                        maxLength={12}
+                                        autoComplete="off"
+                                        className={`w-full py-3 px-4 pr-11 rounded-xl text-base font-mono font-bold tracking-[0.3em] text-center outline-none transition-all border-2 ${
+                                            error
+                                                ? 'border-red-500/50 bg-red-500/5'
+                                                : isDark
+                                                    ? 'bg-black/30 border-slate-700/50 text-white placeholder-slate-700 focus:border-cyan-500/50'
+                                                    : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-300 focus:border-cyan-400'
+                                        }`}
+                                    />
+                                    <button type="button" onClick={() => setShowPwd(v => !v)}
+                                        className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-lg transition-colors ${isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'}`}>
+                                        {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Error */}
+                            {error && (
+                                <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                                    <AlertTriangle className="w-3.5 h-3.5 text-red-400 flex-shrink-0 mt-0.5" />
+                                    <span className="text-[10px] text-red-400 leading-relaxed">{error}</span>
+                                </div>
+                            )}
+
+                            {/* Submit */}
+                            <button
+                                type="submit"
+                                disabled={!canSubmit || loading}
+                                className={`w-full py-3 rounded-xl font-bold text-sm tracking-wider uppercase transition-all duration-200 disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${
+                                    isDark
+                                        ? 'bg-cyan-500/15 border-2 border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/25 hover:border-cyan-500/50'
+                                        : 'bg-cyan-600 text-white border-2 border-cyan-700 hover:bg-cyan-700'
+                                }`}
+                            >
+                                {loading
+                                    ? <><Loader2 className="w-4 h-4 animate-spin" /> Verificando...</>
+                                    : <><ShieldCheck className="w-4 h-4" /> Iniciar sesión</>
+                                }
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 {/* Help text */}
                 <p className={`text-center text-[9px] mt-4 leading-relaxed ${isDark ? 'text-slate-700' : 'text-slate-400'}`}>
-                    El PIN se muestra en la terminal donde corre <span className="font-mono">npm run server</span>
+                    {mode === 'pin'
+                        ? <>El PIN se muestra en la terminal donde corre <span className="font-mono">npm run server</span></>
+                        : 'Usa el correo y contraseña configurados en el servidor'
+                    }
                 </p>
+
+                {/* Server URL config */}
+                <div className="mt-3">
+                    <button
+                        onClick={() => { setShowUrlCfg(v => !v); setUrlDraft(serverUrl); }}
+                        className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[9px] font-mono uppercase tracking-widest transition-colors ${
+                            isDark ? 'text-slate-700 hover:text-slate-500' : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                    >
+                        <Link className="w-2.5 h-2.5" />
+                        Servidor: {serverUrl.replace(/^https?:\/\//, '').substring(0, 32)}
+                    </button>
+                    {showUrlCfg && (
+                        <div className={`mt-2 p-3 rounded-xl border ${isDark ? 'bg-black/40 border-slate-700/40' : 'bg-slate-50 border-slate-200'}`}>
+                            <p className={`text-[9px] mb-2 ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                                URL del servidor (local o túnel cloudflared)
+                            </p>
+                            <input
+                                type="url"
+                                value={urlDraft}
+                                onChange={e => setUrlDraft(e.target.value)}
+                                placeholder="https://xxxx.trycloudflare.com"
+                                className={`w-full py-2 px-3 rounded-lg text-[10px] font-mono outline-none border transition-all ${
+                                    isDark
+                                        ? 'bg-black/30 border-slate-700/50 text-white placeholder-slate-600 focus:border-cyan-500/50'
+                                        : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-cyan-400'
+                                }`}
+                            />
+                            <div className="flex gap-2 mt-2">
+                                <button
+                                    onClick={() => {
+                                        const u = urlDraft.trim().replace(/\/$/, '');
+                                        if (u) {
+                                            localStorage.setItem(LS_SERVER, u);
+                                            setServerUrl(u);
+                                        }
+                                        setShowUrlCfg(false);
+                                    }}
+                                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                                        isDark ? 'bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30' : 'bg-cyan-600 text-white hover:bg-cyan-700'
+                                    }`}
+                                >Guardar</button>
+                                <button
+                                    onClick={() => { localStorage.setItem(LS_SERVER, 'http://localhost:3001'); setServerUrl('http://localhost:3001'); setShowUrlCfg(false); }}
+                                    className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                                        isDark ? 'text-slate-600 hover:text-slate-400' : 'text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >Reset</button>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* CSS for shake animation */}

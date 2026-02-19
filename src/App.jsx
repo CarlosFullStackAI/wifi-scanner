@@ -20,8 +20,9 @@ import DetectionPanel from './components/modules/detection/DetectionPanel';
 import MobileNav from './components/mobile/MobileNav';
 import HistoryPanel from './components/modules/history/HistoryPanel';
 
-const LS_TOKEN = 'nw_token';
-const SERVER   = 'http://localhost:3001';
+const LS_TOKEN  = 'nw_token';
+const LS_SERVER = 'nw_server_url';
+const getServer = () => localStorage.getItem(LS_SERVER) || 'http://localhost:3001';
 
 const App = () => {
   const { themeMode, setThemeMode, isDark } = useTheme();
@@ -34,7 +35,13 @@ const App = () => {
   useEffect(() => {
     const token = localStorage.getItem(LS_TOKEN);
     if (!token) { setAuthChecking(false); return; }
-    fetch(`${SERVER}/api/verify`, { headers: { 'X-Auth-Token': token }, signal: AbortSignal.timeout(4000) })
+    const server = getServer();
+    const isLocal = server.includes('localhost') || server.includes('127.0.0.1');
+    fetch(`${server}/api/verify`, {
+      headers: { 'X-Auth-Token': token },
+      signal: AbortSignal.timeout(4000),
+      ...(isLocal && { targetAddressSpace: 'loopback' }),
+    })
       .then(r => r.json())
       .then(d => {
         if (d.ok) { setAuthToken(token); setIsAuthed(true); }
@@ -413,6 +420,7 @@ const App = () => {
         onChange={handleMobileTab}
         isDark={isDark}
         hasAlert={!!(lastDetection && lastDetection.type === 'adult')}
+        onLogout={handleLogout}
       />
 
       {/* Footer status bar */}
