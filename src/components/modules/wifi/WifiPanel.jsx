@@ -40,7 +40,7 @@ const fmt = (s) => {
 };
 
 // ─── Component ───────────────────────────────────────────────────────────────
-const WifiPanel = ({ isDark, addLog, authToken = '' }) => {
+const WifiPanel = ({ isDark, addLog }) => {
     const [current, setCurrent]     = useState({ connected: false, ssid: '', ip: '', signal: 0, speed: { rx: 0, tx: 0 } });
     const [networks, setNetworks]   = useState([]);
     const [scanning, setScanning]   = useState(false);
@@ -78,7 +78,6 @@ const WifiPanel = ({ isDark, addLog, authToken = '' }) => {
                 ...opts,
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-Auth-Token': authToken,
                     ...(opts.headers || {}),
                 },
                 signal: AbortSignal.timeout(7000),
@@ -88,7 +87,7 @@ const WifiPanel = ({ isDark, addLog, authToken = '' }) => {
         } catch {
             return null;
         }
-    }, [serverUrl, authToken]);
+    }, [serverUrl]);
 
     // Auto-discover tunnel URL from local server (only when on localhost)
     useEffect(() => {

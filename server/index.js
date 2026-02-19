@@ -1,6 +1,5 @@
 import express from 'express';
 import { exec, spawn } from 'child_process';
-import crypto from 'crypto';
 
 const app = express();
 const PORT = 3001;
@@ -20,46 +19,6 @@ app.use((req, res, next) => {
 });
 app.use(express.json());
 
-// ── Auth: PIN + session tokens ─────────────────────────────────────────────
-const PIN          = process.env.WATCHER_PIN || Math.random().toString(36).slice(2, 8).toUpperCase();
-const validTokens  = new Set();
-
-const requireAuth = (req, res, next) => {
-    const token = req.headers['x-auth-token'];
-    if (token && validTokens.has(token)) return next();
-    res.status(401).json({ ok: false, error: 'No autorizado' });
-};
-
-// Public — auth endpoints (no token needed)
-app.post('/api/auth', (req, res) => {
-    const { pin, email, password } = req.body || {};
-
-    // Autenticación por PIN
-    if (pin && pin === PIN) {
-        const token = crypto.randomBytes(20).toString('hex');
-        validTokens.add(token);
-        return res.json({ ok: true, token });
-    }
-
-    // Autenticación por correo + contraseña
-    const cfgEmail = process.env.WATCHER_EMAIL;
-    const cfgPass  = process.env.WATCHER_PASSWORD;
-    if (cfgEmail && cfgPass && email === cfgEmail && password === cfgPass) {
-        const token = crypto.randomBytes(20).toString('hex');
-        validTokens.add(token);
-        return res.json({ ok: true, token });
-    }
-
-    res.status(401).json({ ok: false, error: 'Credenciales incorrectas' });
-});
-
-app.get('/api/verify', (req, res) => {
-    const token = req.headers['x-auth-token'];
-    res.json({ ok: !!(token && validTokens.has(token)) });
-});
-
-// All remaining /api/* routes require a valid token
-app.use('/api', requireAuth);
 
 // Decode netsh output (Windows outputs UTF-8 on modern systems)
 const decode = (buf) => buf.toString('utf8');
