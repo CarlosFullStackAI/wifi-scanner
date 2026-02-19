@@ -17,6 +17,8 @@ import AiReportModal from './components/modules/config/AiReportModal';
 import WifiPanel from './components/modules/wifi/WifiPanel';
 import SystemConfigPanel from './components/modules/config/SystemConfigPanel';
 import DetectionPanel from './components/modules/detection/DetectionPanel';
+import MobileNav from './components/mobile/MobileNav';
+import HistoryPanel from './components/modules/history/HistoryPanel';
 
 const LS_TOKEN = 'nw_token';
 const SERVER   = 'http://localhost:3001';
@@ -75,6 +77,28 @@ const App = () => {
 
   useEffect(() => { setHistory(engineHistory); }, [engineHistory]);
   useEffect(() => { addLog("NET-WATCHER OS v6.1 STABLE", "system"); }, []);
+
+  const [mobileTab, setMobileTab] = useState('scanner');
+  const handleMobileTab = (tab) => { setMobileTab(tab); };
+
+  // ── Persistent detection history (localStorage) ────────────────────────
+  const LS_HISTORY = 'nw_history';
+  const [persistentHistory, setPersistentHistory] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(LS_HISTORY) || '[]'); }
+    catch { return []; }
+  });
+  useEffect(() => {
+    if (!lastDetection) return;
+    setPersistentHistory(prev => {
+      const updated = [lastDetection, ...prev].slice(0, 500);
+      localStorage.setItem(LS_HISTORY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [lastDetection]);
+  const clearPersistentHistory = () => {
+    localStorage.removeItem(LS_HISTORY);
+    setPersistentHistory([]);
+  };
 
   const [showConfig, setShowConfig] = useState(false);
   const [configTab, setConfigTab] = useState('network');
@@ -188,15 +212,15 @@ const App = () => {
 
       <Header isScanning={isScanning} isDark={isDark} themeMode={themeMode} setThemeMode={setThemeMode} currentNetwork={currentNetwork} setShowConfig={setShowConfig} onLogout={handleLogout} />
 
-      <main className="relative z-10 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 flex-1 min-h-0">
+      <main className="relative z-10 p-3 lg:p-4 grid grid-cols-1 lg:grid-cols-12 gap-3 lg:gap-4 flex-1 min-h-0 pb-14 lg:pb-0">
         {/* LEFT - WiFi + Logs */}
-        <div className="lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0">
+        <div className={`lg:col-span-3 flex flex-col gap-3 lg:gap-4 min-h-0 ${mobileTab === 'wifi' ? 'flex' : 'hidden lg:flex'}`}>
           <WifiPanel currentNetwork={currentNetwork} isDark={isDark} onScanNetworks={scanNetworks} isSearchingWifi={isSearchingWifi} availableNetworks={availableNetworks} onConnect={connectToNetwork} addLog={addLog} authToken={authToken} />
           <LogPanel logs={logs} isDark={isDark} className="flex-1" />
         </div>
 
         {/* CENTER - Scanner */}
-        <div className="lg:col-span-5 flex flex-col gap-3 lg:gap-4 min-h-0">
+        <div className={`lg:col-span-5 flex flex-col gap-3 lg:gap-4 min-h-0 ${mobileTab === 'scanner' ? 'flex' : 'hidden lg:flex'}`}>
           <div className={`scanlines relative flex-1 rounded-2xl overflow-hidden transition-all duration-700 ${isDark
             ? `border bg-[#0a0f1a] shadow-2xl shadow-black/60 ${isScanning ? 'border-cyan-500/20 shadow-cyan-500/5' : 'border-slate-800/60'}`
             : 'border border-slate-200 bg-white shadow-xl shadow-slate-200/50'
@@ -352,16 +376,31 @@ const App = () => {
         </div>
 
         {/* RIGHT - Detection + Commands + Settings + System */}
-        <div className="lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-hidden">
+        <div className={`lg:col-span-4 flex flex-col gap-3 lg:gap-4 min-h-0 overflow-hidden ${mobileTab === 'detection' ? 'flex' : 'hidden lg:flex'}`}>
           <DetectionPanel lastDetection={lastDetection} detectionHistory={detectionHistory} isScanning={isScanning} isDark={isDark} />
           <CommandsPanel isScanning={isScanning} triggerInterference={triggerInterference} isAnalyzing={isAnalyzing} analyzeWithGemini={analyzeWithGemini} isDark={isDark} />
           <SettingsPanel sensitivity={sensitivity} setSensitivity={setSensitivity} stealthMode={stealthMode} setStealthMode={setStealthMode} isDark={isDark} />
           <SystemConfigPanel isDark={isDark} cloudStatus={cloudStatus} isSyncing={isSyncing} handleCloudSync={handleCloudSync} setShowConfig={setShowConfig} />
         </div>
+
+        {/* HISTORY - mobile only tab */}
+        {mobileTab === 'history' && (
+          <div className="lg:hidden flex flex-col min-h-0 flex-1">
+            <HistoryPanel history={persistentHistory} onClear={clearPersistentHistory} isDark={isDark} />
+          </div>
+        )}
       </main>
 
+      {/* Mobile bottom nav */}
+      <MobileNav
+        activeTab={mobileTab}
+        onChange={handleMobileTab}
+        isDark={isDark}
+        hasAlert={!!(lastDetection && lastDetection.type === 'adult')}
+      />
+
       {/* Footer status bar */}
-      <footer className={`relative z-10 px-5 py-1.5 flex items-center justify-between text-[9px] font-mono border-t ${isDark ? 'bg-[#070b14]/90 border-slate-800/40 text-slate-600' : 'bg-white/80 border-slate-200 text-slate-400'}`}>
+      <footer className={`hidden lg:flex relative z-10 px-5 py-1.5 items-center justify-between text-[9px] font-mono border-t ${isDark ? 'bg-[#070b14]/90 border-slate-800/40 text-slate-600' : 'bg-white/80 border-slate-200 text-slate-400'}`}>
         <div className="flex items-center gap-4">
           <span>NET-WATCHER v6.1</span>
           <span className="opacity-40">|</span>
