@@ -128,13 +128,6 @@ const WifiPanel = ({ isDark, addLog }) => {
         return () => clearInterval(t);
     }, [refreshCurrent]);
 
-    // Auto-scan when server first comes online
-    const prevOnline = React.useRef(false);
-    useEffect(() => {
-        if (serverOnline && !prevOnline.current) handleScan();
-        prevOnline.current = serverOnline;
-    }, [serverOnline, handleScan]);
-
     // Scan networks
     const handleScan = useCallback(async () => {
         setScanning(true);
@@ -158,6 +151,13 @@ const WifiPanel = ({ isDark, addLog }) => {
         }
         setScanning(false);
     }, [serverOnline, addLog]);
+
+    // Auto-scan when server first comes online
+    const prevOnline = React.useRef(false);
+    useEffect(() => {
+        if (serverOnline && !prevOnline.current) handleScan();
+        prevOnline.current = serverOnline;
+    }, [serverOnline, handleScan]);
 
     // Connect
     const handleConnect = async () => {
