@@ -16,7 +16,9 @@ const isLocalhost = () =>
 const getInitialUrl = () => {
     const saved = typeof window !== 'undefined' ? localStorage.getItem(LS_KEY) : null;
     if (saved) return saved;
-    return isLocalhost() ? 'http://localhost:3001' : '';
+    // Always try localhost:3001 by default — works from any domain if the user
+    // runs "npm run server" on this machine (Chrome allows HTTPS→localhost via PNA header)
+    return 'http://localhost:3001';
 };
 
 // ─── Demo fallback ───────────────────────────────────────────────────────────
@@ -204,17 +206,13 @@ const WifiPanel = ({ isDark, addLog }) => {
                         <div className={`flex items-center gap-1.5 flex-1 min-w-0 px-2 py-1 rounded-lg text-[8px] font-bold uppercase tracking-widest truncate ${
                             serverOnline
                                 ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')
-                                : serverUrl
-                                    ? (isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600')
-                                    : (isDark ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600')
+                                : (isDark ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600')
                         }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${serverOnline ? 'bg-emerald-400' : serverUrl ? 'bg-red-400' : 'bg-amber-400'}`} />
+                            <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${serverOnline ? 'bg-emerald-400' : 'bg-red-400'}`} />
                             <span className="truncate">
                                 {serverOnline
-                                    ? `Servidor activo · ${onLocalhost ? ':3001' : serverUrl.replace(/^https?:\/\//, '').slice(0, 22)}`
-                                    : serverUrl
-                                        ? `Sin conexión · npm run server`
-                                        : 'Configura la URL del servidor'
+                                    ? `Servidor activo · ${serverUrl.replace(/^https?:\/\//, '').slice(0, 24)}`
+                                    : `Sin servidor · npm run server`
                                 }
                             </span>
                         </div>

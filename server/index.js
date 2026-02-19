@@ -5,7 +5,18 @@ import { exec, spawn } from 'child_process';
 const app = express();
 const PORT = 3001;
 
-app.use(cors());
+// ── CORS + Private Network Access ─────────────────────────────────────────
+// The "Access-Control-Allow-Private-Network" header is required by Chrome 98+
+// to allow HTTPS pages (e.g. wifi-scanner.pages.dev) to call http://localhost
+app.use((req, res, next) => {
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Private-Network', 'true');
+    if (req.method === 'OPTIONS') return res.status(204).end();
+    next();
+});
 app.use(express.json());
 
 // Decode netsh output (Windows outputs UTF-8 on modern systems)
